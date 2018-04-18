@@ -2,12 +2,19 @@
     "name": "saritasa/clickblocks",
     "description": "ClickBlocks PHP framework © Saritasa",
     "type": "library",
-    "license": "mit",
+    "license": "MIT",
     "authors": [
         {
             "name": "Sergey Milimko",
             "email": "serg@saritasa.com"
         }
     ],
+    "autoload": {
+        "classmap" : ["Framework/"],
+        "exclude-from-classmap": ["Framework/_tests/"]
+    },
+    "scripts": {
+        "post-package-install": ""
+    },
     "require": {}
 }

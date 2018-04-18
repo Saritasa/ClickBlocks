@@ -1,0 +1,77 @@
+<div class="main">
+  <h2 class="title">Image Editor</h2>
+  <div class="tools">
+    <div class="tools-heading">
+      <h3 class="panel-title">Edit your image to fit into the webpage</h3>
+    </div>
+    <div class="tools-body">
+      <table>
+        <tr>
+          <th style="width:32%;text-align:center;">WIDTH (PX)</th>
+          <th style="width:35%;text-align:center;">HEIGHT (PX)</th>
+          <th style="width:33%;text-align:center;">BG COLOR</th>
+        </tr>
+        <tr>
+          <td><span id="">0</span>px</td>
+          <td><span id="">0</span>px</td>
+          <td><c:colorpicker id="bgColor" /></td>
+        </tr>
+        <tr>
+          <th colspan="3">ROTATE (&#176;) <input type="text" id="angle_<?=$id;?>" /></th>
+        </tr>
+        <tr>
+          <td colspan="3">
+            <c:slider id="rotate" />
+          </td>
+        </tr>
+        <tr>
+          <th colspan="3">ZOOM (%) <input type="textbox" id="scale_<?=$id;?>" /></th>
+        </tr>
+        <tr>
+          <td colspan="3">
+            <c:slider id="zoom" />
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+ <!--   <table class="imgeditor_param">
+      <tr>
+        <td style="padding-left:0px;"><span id="width_">0</span> px</td>
+        <td><span id="height_ ">0</span> px</td>
+        <td></td>
+        <td>
+          <table>
+            <tr>
+              <td style="padding:0;"><textbox id="angle" maxlength="6" class="imgeditor_rotate_inp" style="float:none;" /><span>&#176;</span></td>
+              <td><div id="slider_rotate_ " class="imgeditor_slider"><div class="imgeditor_snap"></div></div></td>
+            </tr>
+          </table>
+        </td>
+        <td>
+          <table>
+            <tr>
+              <td style="padding:0;"><textbox id="zoom" maxlength="6" class="imgeditor_zoom_inp" style="float:none;" /><span>%</span></td>
+              <td><div id="slider_zoom_ " class="imgeditor_slider"><div class="imgeditor_snap"></div></div></td>
+            </tr>
+          </table>
+        </td>
+        <td>
+          <checkbox id="isSmartCrop" value="1" visible="0" checked="1" caption=" Smart Crop" />
+        </td>
+        <td>
+
+            <hidden id="isTransparent" class="isTransparentValue" value="false"/>
+          </td>
+      </tr>
+    </table>
+    <div id="image_area_ " class="imgeditor_image"></div>
+    <div class="imgeditor_panel_buttons">
+      <hyperlink id="btnUseOriginal" class="btn blue" href="javascript:;" visible="0">Use Original Image</hyperlink>
+      <hyperlink id="btnUseThisImage" class="btn blue" href="javascript:;" style="float:right;">Use Image</hyperlink>
+      <hyperlink id="btnCancel" class="btn gray" href="javascript:;" style="float:right;margin-right:20px;">Cancel Image Edit</hyperlink>
+      <textbutton id="btnUseThisImage" class="imgeditor_button" value="use this image" />
+      <textbutton id="btnUseOriginal" class="imgeditor_button" value="use original image" visible="0" />
+      <textbutton id="btnCancel" class="imgeditor_button" value="cancel image edit" />
+    </div>-->
+</div>

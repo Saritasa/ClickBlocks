@@ -1,0 +1,5 @@
+DirectoryIndex index.php
+AuthUserFile .htpasswd
+AuthType Basic
+AuthName "Configuration"
+Require user admin

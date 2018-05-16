@@ -13,10 +13,10 @@ class Upload extends Control
   
   public function init()
   {
-    $url = \CB::url('framework');
-    $this->view->addJS(['src' => $url . '/web/js/jquery/upload/vendor/jquery.ui.widget.js']);
-    $this->view->addJS(['src' => $url . '/web/js/jquery/upload/jquery.iframe-transport.js']);
-    $this->view->addJS(['src' => $url . '/web/js/jquery/upload/jquery.fileupload.js']);
+    $url = \CB::url('framework-web');
+    $this->view->addJS(['src' => $url . '/js/jquery/upload/vendor/jquery.ui.widget.js']);
+    $this->view->addJS(['src' => $url . '/js/jquery/upload/jquery.iframe-transport.js']);
+    $this->view->addJS(['src' => $url . '/js/jquery/upload/jquery.fileupload.js']);
     return $this;
   }
 

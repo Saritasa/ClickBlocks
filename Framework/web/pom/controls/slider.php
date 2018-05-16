@@ -18,8 +18,8 @@ class Slider extends Control
   
   public function init()
   {
-    $this->view->addCSS(['href' => \CB::url('framework') . '/web/js/jquery/nouislider/jquery.nouislider.css']);
-    $this->view->addJS(['src' => \CB::url('framework') . '/web/js/jquery/nouislider/jquery.nouislider.min.js']);
+    $this->view->addCSS(['href' => \CB::url('framework-web') . '/js/jquery/nouislider/jquery.nouislider.css']);
+    $this->view->addJS(['src' => \CB::url('framework-web') . '/js/jquery/nouislider/jquery.nouislider.min.js']);
     return $this;
   }
   

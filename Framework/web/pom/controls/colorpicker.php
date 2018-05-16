@@ -18,8 +18,8 @@ class ColorPicker extends Input
   
   public function init()
   {
-    $this->view->addCSS(['href' => \CB::url('framework') . '/web/js/jquery/colorpicker/spectrum.css']);
-    $this->view->addJS(['src' => \CB::url('framework') . '/web/js/jquery/colorpicker/spectrum.js']);
+    $this->view->addCSS(['href' => \CB::url('framework-web') . '/js/jquery/colorpicker/spectrum.css']);
+    $this->view->addJS(['src' => \CB::url('framework-web') . '/js/jquery/colorpicker/spectrum.js']);
     return $this;
   }
 }

@@ -19,7 +19,7 @@ class CKEditor extends Control
   
   public function init()
   {
-    $this->view->addJS(['src' => \CB::url('framework') . '/web/js/ckeditor/ckeditor.js']);
+    $this->view->addJS(['src' => \CB::url('framework-web') . '/js/ckeditor/ckeditor.js']);
     return $this;
   }
   

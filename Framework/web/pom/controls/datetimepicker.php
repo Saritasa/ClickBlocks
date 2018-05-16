@@ -18,8 +18,8 @@ class DateTimePicker extends Input
   
   public function init()
   {
-    $this->view->addCSS(['href' => \CB::url('framework') . '/web/js/jquery/datetimepicker/datetimepicker.css']);
-    $this->view->addJS(['src' => \CB::url('framework') . '/web/js/jquery/datetimepicker/datetimepicker.js']);
+    $this->view->addCSS(['href' => \CB::url('framework-web') . '/js/jquery/datetimepicker/datetimepicker.css']);
+    $this->view->addJS(['src' => \CB::url('framework-web') . '/js/jquery/datetimepicker/datetimepicker.js']);
     return $this;
   }
 }

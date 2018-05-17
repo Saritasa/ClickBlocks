@@ -472,7 +472,7 @@ final class CB implements \ArrayAccess
    * @access public
    * @static
    */
-  public static function exception(\Exception $e)
+  public static function exception($e)
   {
     restore_error_handler();
     restore_exception_handler();
@@ -571,7 +571,7 @@ final class CB implements \ArrayAccess
    * @access public
    * @static  
    */
-  public static function analyzeException(\Exception $e)
+  public static function analyzeException($e)
   {
     $reduceObject = function($obj) use(&$reduceObject)
     {

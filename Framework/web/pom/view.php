@@ -1138,9 +1138,9 @@ class View implements \ArrayAccess
         $this->controls[$body->attr('id')] = $body;
         $this->commit();
         static::decodePHPTags($body, $ctx['marks']);
-        $src = \CB::url('framework') . '/web/js/jquery/jquery.min.js';
+        $src = \CB::url('framework-web') . '/js/jquery/jquery.min.js';
         if (empty($this->js['top'][$src])) $this->addJS(['src' => $src], null, true, -1000);
-        $src = \CB::url('framework') . '/web/js/cb.full.min.js?v=2';
+        $src = \CB::url('framework-web') . '/js/cb.full.min.js?v=2';
         if (empty($this->js['top'][$src])) $this->addJS(['src' => $src], null, true, -999);
       }
       $this->tpl->setTemplate($ctx['html']);

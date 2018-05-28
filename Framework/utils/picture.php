@@ -399,9 +399,11 @@ class Picture
    */
   protected function getRightSize($mode, $dstWidth, $dstHeight, $srcWidth, $srcHeight, $maxWidth = 0, $maxHeight = 0)
   {
+    $dstWidth = abs((int) filter_var($dstWidth, FILTER_SANITIZE_NUMBER_INT));
+    $dstHeight= abs((int) filter_var($dstHeight, FILTER_SANITIZE_NUMBER_INT));
     switch ($mode)
     {
-      case self::PIC_MANUAL;
+      case self::PIC_MANUAL; 
         $w = $dstWidth;
         $h = $dstHeight;
         if ($maxWidth > 0 && $w > $maxWidth) $w = $maxWidth;
@@ -409,7 +411,7 @@ class Picture
         break;
       case self::PIC_AUTOWIDTH:
         $h = $dstHeight;
-        if ($maxHeight > 0 && $h > $maxHeight) $h = $maxHeight;
+        if ($maxHeight > 0 && $h > $maxHeight) $h = $maxHeight;          
         $w = $h / $srcHeight * $srcWidth;
         if ($maxWidth > 0 && $w > $maxWidth) $w = $maxWidth;
         break;

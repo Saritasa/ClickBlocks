@@ -843,6 +843,7 @@ final class CB implements \ArrayAccess
   public static function url($url)
   {
     if (self::$instance !== null) $url = isset(self::$instance['dirs'][$url]) ? self::$instance['dirs'][$url] : $url;
+    $url = str_replace('public/', '', $url);
     return '/' . str_replace('\\', '/', ltrim($url, '\\/'));
   }
   

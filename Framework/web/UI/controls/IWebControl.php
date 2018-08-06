@@ -15,4 +15,4 @@ interface IWebControl extends Helpers\IControl
   public function update($mode = true);
   public function redraw(array $parameters = null);
   public function delete();
-
+}

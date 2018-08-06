@@ -149,7 +149,7 @@ class XHTMLParser
          }
          else
          {
-            $class = '\ClickBlocks\Web\UI\POM\\' . $tg;
+            $class = '\ClickBlocks\Web\UI\POM\\' . ucfirst($tg);
             $ctrl = new $class($attributes['id']);
             if ($ctrl instanceof POM\IPanel)
             {

@@ -4,25 +4,6 @@ namespace ClickBlocks\Web\UI\Helpers;
 
 use ClickBlocks\Core;
 
-interface IControl
-{
-   public function getParameters();
-   public function setParameters(array $parameters);
- 
-   public function addClass($class);
-   public function removeClass($class);
-   public function replaceClass($class1, $class2);
-   public function toggleClass($class1, $class2 = null);
-   public function hasClass($class);
-   
-   public function addStyle($style, $value);
-   public function setStyle($style, $value);
-   public function getStyle($style);
-   public function removeStyle($style);
-   public function toggleStyle($style, $value);
-   public function hasStyle($style);
-}
-
 abstract class Control implements IControl
 {
    protected $attributes = array('id' => null,
@@ -80,7 +61,7 @@ abstract class Control implements IControl
    {
       return (array_key_exists($param, $this->attributes) || array_key_exists($param, $this->properties));
    }
-   
+
    public function __unset($param)
    {
       unset($this->attributes[$param]);
@@ -89,11 +70,11 @@ abstract class Control implements IControl
 
    public function __toString()
    {
-      try 
+      try
       {
          return $this->render();
       }
-      catch (\Exception $e) 
+      catch (\Exception $e)
       {
          Core\Debugger::exceptionHandler($e);
       }

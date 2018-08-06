@@ -6,5 +6,13 @@ use ClickBlocks\Core,
 
 class <?php echo $class; ?> extends \ClickBlocks\DB\Orchestra
 {
-    protected static $bll = '<?php echo $className; ?>';
+    public function __construct()
+    {
+        parent::__construct('<?php echo $className; ?>');
+    }
+
+    public static function getBLLClassName()
+    {
+        return '<?php echo $className; ?>';
+    }
 }

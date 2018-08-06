@@ -2,7 +2,7 @@
 /**
  * ClickBlocks.PHP v. 1.0
  *
- * Copyright (C) 2014  SARITASA LLC
+ * Copyright (C) 2010  SARITASA LLC
  * http://www.saritasa.com
  *
  * This framework is free software. You can redistribute it and/or modify
@@ -17,370 +17,682 @@
  * You should have received a copy of the ClickBlocks.PHP License
  * along with this program.
  *
- * @copyright  2007-2014 SARITASA LLC <info@saritasa.com>
+ * Responsibility of this file: page.php
+ *
+ * @category   MVC
+ * @package    MVC
+ * @copyright  2007-2010 SARITASA LLC <info@saritasa.com>
  * @link       http://www.saritasa.com
+ * @since      File available since Release 1.0.0
  */
 
 namespace ClickBlocks\MVC;
 
+use ClickBlocks\Cache\ICache;
 use ClickBlocks\Core,
-    ClickBlocks\Net,
-    ClickBlocks\Web\POM;
+    ClickBlocks\Cache,
+    ClickBlocks\Web,
+    ClickBlocks\Web\UI\POM,
+    ClickBlocks\Web\UI\Helpers;
+use ClickBlocks\Core\Config;
+use ClickBlocks\Core\Register;
+use ClickBlocks\Web\Ajax;
+use ClickBlocks\Web\CSS;
+use ClickBlocks\Web\HTML;
+use ClickBlocks\Web\JS;
+
+interface IPage extends \ArrayAccess, \Countable
+{
+   public function getUniqueID();
+   public function access();
+   public function preparse();
+   public function parse();
+   public function init();
+   public function load();
+   public function unload();
+   public function perform();
+   public function show();
+   public function render();
+}
 
 /**
- * The base class of all classes that intended for rendering HTML and management of UI of web pages.
- * The Page class plays role of Controller in MVC model.
+ * The parent class implements the controller's logic for site pages according to the MVC pattern.
  *
- * @version 1.0.0
- * @package cb.mvc
- * @property-read Core\Template $tpl
- * @property-read POM\Body $body
+ * @category   MVC
+ * @package    MVC
+ * @copyright  2007-2010 SARITASA LLC <info@saritasa.com>
+ * @version    Release: 1.0.0
+ *
+ * @property POM\Body body
+ * @property Core\Template $tpl
  */
-class Page
+class Page implements IPage
 {
-  // Error message templates.
-  const ERR_PAGE_1 = 'Method [{var}] is not allowed to be invoked.';
-  const ERR_PAGE_2 = 'Incorrect request to the page.';
-  const ERR_PAGE_3 = 'Property [{var}] is undefined.';
+   /**
+    * The instance of a Register class
+    *
+    * @var    Register
+    * @access public
+    */
+   public $reg = null;
 
-  /**
-   * Default cache of page classes.
-   *
-   * @var \ClickBlocks\Cache\Cache $cache
-   * @access public
-   * @static
-   */
-  public static $cache = null;
+   /**
+    * The instance of a Config class.
+    *
+    * @var    Config
+    * @access public
+    */
+   public $config = null;
 
-  /**
-   * Default cache group.
-   *
-   * @var string $cacheGroup
-   * @access public
-   * @static
-   */
-  public static $cacheGroup = 'pages';
+   /**
+    * The instance of a Loader class.
+    *
+    * @var    Loader
+    * @access public
+    */
+   public $loader = null;
 
-  /**
-   * Default cache expire.
-   *
-   * @var integer $cacheExpire
-   * @access public
-   * @static
-   */
-  public static $cacheExpire = 0;
+   /**
+    * The instance of a Logger class.
+    *
+    * @var    Logger
+    * @access public
+    */
+   public $logger = null;
 
-  /**
-   * Contains a page object, whose workflow is performed.
-   *
-   * @var \ClickBlocks\MVC\Page $current
-   * @access public
-   * @static
-   */
-  public static $current = null;
+   /**
+    * The instance of a Debugger class.
+    *
+    * @var    Debugger
+    * @access public
+    */
+   public $debugger = null;
 
-  /**
-   * Represents the view of a page.
-   *
-   * @var \ClickBlocks\Web\POM\View $view
-   * @access public
-   */
-  public $view = null;
+   /**
+    * GET, POST and FILES data
+    *
+    * @var    array
+    * @access public
+    */
+   public $fv = null;
 
-  /**
-   * The URL for redirect if a page is not accessible.
-   *
-   * @var string
-   * @access public
-   */
-  public $noAccessURL = null;
+   /**
+    * The instance of a JS class.
+    *
+    * @var    JS
+    * @access public
+    */
+   public $js = null;
 
-  /**
-   * The URL for redirect if the user session is expired.
-   *
-   * @var string
-   * @access public
-   */
-  public $noSessionURL = null;
+   /**
+    * The instance of a CSS class.
+    *
+    * @var    CSS
+    * @access public
+    */
+   public $css = null;
 
-  /**
-   * The time (in seconds) of expiration cache of a page.
-   *
-   * @var integer
-   * @access public
-   */
-  protected $expire = 0;
+   /**
+    * The instance of a HTML class.
+    *
+    * @var    HTML
+    * @access public
+    */
+   public $html = null;
 
-  /**
-   * This list of regular expressions that restrict the area of permitted delegates.
-   *
-   * @var array $ajaxPermissions
-   * @access protected
-   */
-  protected $ajaxPermissions = ['permitted' => ['/^ClickBlocks\\\\(MVC|Web\\\\POM).*$/i'],
-                                'forbidden' => ['/^ClickBlocks\\\\Web\\\\POM\\\\[^\\\\]*\[\d*\]->(__set|__get|__unset|__isset|prop)$/i']];
+   /**
+    * The instance of a AJAX class.
+    *
+    * @var    AJAX
+    * @access public
+    */
+   public $ajax = null;
 
-  /**
-   * The sequence of class methods that determines the class workflow.
-   * The sequence should consist of two parts: for the first visit to the page (GET non-Ajax request) and for other visits.
-   *
-   * @var array $sequenceMethods
-   * @access protected
-   */
-  protected $sequenceMethods = ['first' => ['parse', 'init', 'load', 'render', 'unload'],
-                                'after' => ['assign', 'load', 'process', 'unload']];
+   /**
+    * The instance of a cache class implementing ICache interface.
+    *
+    * @var    ICache
+    * @access public
+    */
+   public $cache = null;
 
-  /**
-   * The unique page identifier.
-   *
-   * @var string $UID
-   * @access private
-   */
-  private $UID = null;
+   /**
+    * The instance of a ClickBlocks\Web\UI\Helpers class.
+    *
+    * @var    \ClickBlocks\Web\UI\Helpers\XHTML
+    * @access public
+    */
+   public $xhtml = null;
 
-  /**
-   * Cache object for storing HTML of the rendered page.
-   *
-   * @var \ClickBlocks\Cache\Cache $storage
-   * @access private
-   */
-  private $storage = null;
+   /**
+    * The instance of a WebForms\Validators class.
+    *
+    * @var    POM\Validators
+    * @access public
+    */
+   public $validators = null;
 
-  /**
-   * The instance of Body control.
-   *
-   * @var \ClickBlocks\Web\POM\Body $body
-   * @access private
-   */
-  private $body = null;
+   /**
+    * The url of a page to which the transition will be the case if the page is not accessable.
+    *
+    * @var    string
+    * @access public
+    */
+   public $noAccessURL = null;
 
-  /**
-   * The instance of the Body template engine.
-   *
-   * @var \ClickBlocks\Core\Template $tpl
-   * @access private
-   */
-  private $tpl = null;
+   /**
+    * The url of a page to which the transition will be the case if the user session is expired.
+    *
+    * @var    string
+    * @access public
+    */
+   public $noSessionURL = null;
 
-  /**
-   * Constructor. Creates unique identifier of the page based on page template, page class and site unique ID.
-   * This UID can be used for caching of page rendering.
-   *
-   * @param string $template - template string or path to a template file.
-   * @access public
-   */
-  public function __construct($template = null)
-  {
-    $this->UID = md5(get_class($this) . $template . \CB::getSiteUniqueID());
-    $this->view = new POM\View($template);
-    $this->storage = static::$cache ? static::$cache : \CB::getInstance()->getCache();
-  }
+   /**
+    * The time (in seconds) of expiration cache of a page.
+    *
+    * @var    integer
+    * @access public
+    */
+   public $expired = 0;
 
-  /**
-   * Used for overloading the dynamic properties "body" and "tpl" that
-   * represent the Body control and its template engine object respectively.
-   *
-   * @param string $param - the property name.
-   * @return mixed
-   * @access public
-   */
-  public function __get($param)
-  {
-    if ($param == 'body') return $this->body ? $this->body : $this->body = $this->view->get('body');
-  	if ($param == 'tpl') return $this->tpl ? $this->tpl : $this->tpl = $this->__get('body')->tpl;
-	  return new Core\Exception($this, 'ERR_PAGE_3', get_class($this) . '::$' . $param);
-  }
+   /**
+    * The object of web-control that was the sender of an ajax-request.
+    *
+    * @var    IWebControl
+    * @access public
+    */
+   public $sender = null;
 
-  /**
-   * Returns the unique page ID.
-   *
-   * @return string
-   * @access public
-   */
-  public function getPageID()
-  {
-    return $this->UID;
-  }
+   public $callBackPermissions = array('\ClickBlocks\MVC\\', '\ClickBlocks\Web\UI\POM\\');
 
-  /**
-   * Sets the unique page ID.
-   *
-   * @param string $UID
-   * @access public
-   */
-  public function setPageID($UID)
-  {
-    $this->UID = $UID;
-  }
+   /**
+    * The xhtml-temlate of a page.
+    * @var    string
+    * @access private
+    */
+   private $tpl = null;
 
-  /**
-   * Returns the page cache object.
-   *
-   * @return \ClickBlocks\Cache\Cache
-   * @access public
-   */
-  public function getCache()
-  {
-    return $this->storage;
-  }
+   /**
+    * The array of controls uniqueID
+    *
+    * @var    array
+    * @access private
+    */
+   private $controls = array();
 
-  /**
-   * Returns FALSE if the page is not cached or its cache is expired. Otherwise, it returns TRUE.
-   *
-   * @return boolean
-   * @access public
-   */
-  public function isExpired()
-  {
-    return ($this->expire ?: static::$cacheExpire) ? $this->storage->isExpired($this->UID) : true;
-  }
+   private $vs = array();
 
-  /**
-   * Recovers page HTML from cache.
-   * It returns NULL if the page is not cached or its cache is expired.
-   *
-   * @return string
-   * @access public
-   */
-  public function restore()
-  {
-    return $this->storage->get($this->UID);
-  }
+   private $uniqueID = null;
 
-  /**
-   * Returns list of workflow methods.
-   * if $first is TRUE, the list of methods for the first visit to the page is returned,
-   * otherwise the method returns the list of methods for the next visits.
-   *
-   * @param boolean $first - determines type of sequence of methods.
-   * @return array
-   * @access public
-   */
-  public function getSequenceMethods($first = true)
-  {
-    return $this->sequenceMethods[$first ? 'first' : 'after'];
-  }
+   private $cs = null;
 
-  /**
-   * This method is alias of method get() of class ClickBlocks\Web\POM\View and returns control object by its unique or logic ID.
-   * If a control with such ID is not found, it returns FALSE.
-   *
-   * @param string $id - unique or logic control ID.
-   * @param boolean $searchRecursively - determines whether to recursively search a control in all panels.
-   * @param \ClickBlocks\Web\POM\Control $context - the panel control inside which the control searching is performed.
-   * @return \ClickBlocks\Web\POM\Control|boolean
-   * @access public
-   */
-  public function get($id, $searchRecursively = true)
-  {
-    return $this->view->get($id, $searchRecursively);
-  }
+   private $cacheKey = null;
 
-  /**
-   * Checks accessibility of the page.
-   *
-   * @return boolean
-   * @access public
-   */
-  public function access()
-  {
-    return true;
-  }
+   /**
+    * Checks whether or not the current request POST-request.
+    *
+    * @return boolean
+    * @access public
+    * @static
+    */
+   public static function isPOSTRequest()
+   {
+      return ($_SERVER['REQUEST_METHOD'] == 'POST');
+   }
 
-    /**
-     * Parses the page template.
-     *
-     * @access public
-     * @throws Core\Exception
-     */
-  public function parse()
-  {
-    $this->view->parse();
-  }
+   /**
+    * Checks whether or not the current request GET-request.
+    *
+    * @return boolean
+    * @access public
+    * @static
+    */
+   public static function isGETRequest()
+   {
+      return ($_SERVER['REQUEST_METHOD'] == 'GET');
+   }
 
-  /**
-   * Initializes the page view.
-   * This method is performed once during the first visit to the page.
-   *
-   * @access public
-   */
-  public function init()
-  {
-    $this->view->invoke('init');
-  }
+   /**
+    * Constructs a new Page.
+    *
+    * @param string $xml
+    * @param string $xslt
+    * @access public
+    */
+   public function __construct($template = null)
+   {
+      $this->reg = Core\Register::getInstance();
+      $this->fv = $this->reg->fv;
+      $this->config = $this->reg->config;
+      $this->cache = $this->reg->cache;
+      $this->loader = $this->reg->loader;
+      $this->logger = $this->reg->logger;
+      $this->debugger = $this->reg->debugger;
+      $this->ajax = $this->reg->ajax = Web\Ajax::getInstance();
+      $this->js = Web\JS::getInstance();
+      $this->css = Web\CSS::getInstance();
+      $this->html = Web\HTML::getInstance();
+      $this->validators = POM\Validators::getInstance();
+      $this->tpl = $template;
+      $this->cs = $this->cache;
+      $this->noSessionURL = $this->reg->uri->scheme . '://' . $this->reg->uri->getSource();
+      $this->cacheKey = md5($this->tpl . $this->reg->uri->getURI());
+   }
 
-  /**
-   * Prepares the page view.
-   * This method is executed each time you visit the page.
-   *
-   * @access public
-   */
-  public function load()
-  {
-    $this->view->invoke('load');
-  }
+   /**
+    * Returns the unique ID of a page.
+    *
+    * @return string
+    * @access public
+    */
+   public function getUniqueID()
+   {
+      return $this->uniqueID;
+   }
 
-  /**
-   * Renders the page HTML.
-   *
-   * @access public
-   */
-  public function render()
-  {
-    $html = $this->view->render();
-    if ($this->expire ?: static::$cacheExpire) $this->storage->set($this->UID, $html, $this->expire, static::$cacheGroup ?: 'pages');
-    echo $html;
-  }
+   /**
+    * Returns the page-html from its cache.
+    *
+    * @return string
+    * @access public
+    */
+   public function cacheGet()
+   {
+      if ($this->expired) return $this->cache->get($this->cacheKey);
+   }
 
-    /**
-     * Assigns the changes that received from the client side, to controls.
-     *
-     * @access public
-     * @throws Core\Exception
-     */
-  public function assign()
-  {
-    $data = Net\Request::getInstance()->data;
-    if (!isset($data['ajax-vs']) || !isset($data['ajax-key'])) throw new Core\Exception($this, 'ERR_PAGE_2');
-    if (!is_array($data['ajax-vs'])) $data['ajax-vs'] = json_decode($data['ajax-vs'], true);
-    if (!$this->view->assign($data['ajax-key'], isset($data['ajax-vs']['vs']) ? $data['ajax-vs']['vs'] : [], $data['ajax-vs']['ts']))
-    {
-      if ($this->noSessionURL) \CB::go($this->noSessionURL);
-      \CB::reload();
-    }
-  }
+   /**
+    * Validates whether or not the cache of a page has expired.
+    *
+    * @return boolean
+    * @access public
+    */
+   public function cacheExists()
+   {
+      if ($this->expired) return !$this->cache->isExpired($this->cacheKey);
+      return false;
+   }
 
-  /**
-   * Performs the Ajax request.
-   *
-   * @access public
-   * @throws Core\Exception
-   * @throws \ReflectionException
-   */
-  public function process()
-  {
-    $data = Net\Request::getInstance()->data;
-    if (isset($data['ajax-method']))
-    {
-      $method = new Core\Delegate($data['ajax-method']);
-      if (!$method->isPermitted($this->ajaxPermissions)) throw new Core\Exception($this, 'ERR_PAGE_1', $method);
+   /**
+    * Sets the new page's cache.
+    *
+    * @param string $html
+    * @return Page
+    * @access public
+    */
+   public function cacheSet($html)
+   {
+      if ($this->expired) $this->cache->set($this->cacheKey, $html, $this->expired);
+      return $this;
+   }
+
+   public function count()
+   {
+      return count($this->controls);
+   }
+
+   public function lockValidator($uniqueID, $flag = false)
+   {
+      if (isset($this->vs['validators'][$uniqueID])) $this->vs['validators'][$uniqueID] = $flag;
+   }
+   
+   public function validatorIsLocked($uniqueID)
+   {
+      return !$this->vs['validators'][$uniqueID];
+   }
+
+   public function offsetSet($uniqueID, $ctrl)
+   {
+      if (!($ctrl instanceof POM\IWebControl)) throw new \Exception(err_msg('ERR_PG_2'));
+      $this->vs[$uniqueID] = $ctrl->getParameters();
+      $this->controls[$uniqueID] = $ctrl;
+      if ($ctrl instanceof POM\IValidator && !isset($this->vs['validators'][$uniqueID])) $this->vs['validators'][$uniqueID] = true;
+   }
+
+   public function offsetExists($uniqueID)
+   {
+      return isset($this->controls[$uniqueID]);
+   }
+
+   public function offsetUnset($uniqueID)
+   {
+      unset($this->vs[$uniqueID]);
+      unset($this->vs['validators'][$uniqueID]);
+      unset($this->controls[$uniqueID]);
+   }
+
+   public function offsetGet($uniqueID)
+   {
+      return $this->vs[$uniqueID];
+   }
+
+   public function __get($param)
+   {
+      if ($param == 'tpl') return $this->tpl;
+      if ($param == 'head') return $this->xhtml->head;
+      if ($param == 'body') return $this->xhtml->body ?: $this->getByUniqueID($this->uniqueID);
+      throw new \Exception(err_msg('ERR_GENERAL_3', array($param, get_class($this))));
+   }
+
+   public function getValidators()
+   {
+      $vals = array();
+      foreach ((array)$this->vs['validators'] as $uniqueID => $flag) if ($flag) $vals[] = $uniqueID;
+      return $vals;
+   }
+
+   public function getActualVS($uniqueID)
+   {
+      if (isset($this->controls[$uniqueID])) return $this->controls[$uniqueID]->getParameters();
+      return $this->vs[$uniqueID];
+   }
+
+   public function getByUniqueID($uniqueID)
+   {
+      if (isset($this->controls[$uniqueID])) return $this->controls[$uniqueID];
+      if (isset($this->vs[$uniqueID]))
+      {
+         $ctrl = $this->vs[$uniqueID];
+         $this->controls[$uniqueID] = $ctrl = foo(new $ctrl['parameters'][1]['ctrlClass']($ctrl['parameters'][1]['id']))->setParameters($ctrl);
+         return $ctrl;
+      }
+      return false;
+   }
+
+   public function replaceByUniqueID($uniqueID, POM\IWebControl $ctrl)
+   {
+      $ctrl = $this->getByUniqueID($uniqueID);
+      $parent = $this->getByUniqueID($ctrl->parentUniqueID);
+      if (!$parent) throw new \Exception(err_msg('ERR_CTRL_6', array($ctrl->getFullID())));
+      return $parent->replaceByUniqueID($uniqueID, $ctrl);
+   }
+
+   public function deleteByUniqueID($uniqueID, $time = 0)
+   {
+      $ctrl = $this->getByUniqueID($uniqueID);
+      $parent = $this->getByUniqueID($ctrl->parentUniqueID);
+      if (!$parent) throw new \Exception(err_msg('ERR_CTRL_6', array($ctrl->getFullID())));
+      return $parent->deleteByUniqueID($uniqueID, $time);
+   }
+
+   public function cleanByUniqueID($uniqueID = null, $isRecursion = false)
+   {
+      $vs = $this->getActualVS(($uniqueID) ?: $this->uniqueID);
+      if ($vs['extra']['clean']) $this->getByUniqueID($uniqueID)->clean();
+      $controls = $vs['controls'];
+      if ($controls) foreach ($controls as $uniqueID => $v)
+      {
+         $vs = $this->getActualVS($uniqueID);
+         if ($vs['controls'] && $isRecursion) $this->cleanByUniqueID($uniqueID, true);
+         if (!$vs['extra']['clean']) continue;
+         $this->getByUniqueID($uniqueID)->clean();
+      }
+      return $this;
+   }
+
+   public function get($id, $isRecursion = true)
+   {
+      return $this->body->get($id, $isRecursion);
+   }
+
+   public function replace($id, IWebControl $ctrl, $isRecursion = true)
+   {
+      return $this->body->replace($id, $ctrl, $isRecursion);
+   }
+
+   public function delete($id, $isRecursion = true)
+   {
+      return $this->body->delete($id, $isRecursion);
+   }
+
+   public function clean($id, $isSearchRecursion = true, $isCleanRecursion = false)
+   {
+      $ctrl = $this->get($id, $isSearchRecursion);
+      return (!$ctrl) ? false : $this->cleanByUniqueID($ctrl->uniqueID, $isCleanRecursion);
+   }
+
+   public function methodExists($uniqueID, $method)
+   {
+      return $this->vs[$uniqueID]['extra'][$method];
+   }
+
+   /**
+    * Checks accessability of a page.
+    *
+    * @return boolean
+    * @access public
+    */
+   public function access()
+   {
+      return true;
+   }
+
+   /**
+    * Preparing to the parsing of a page.
+    *
+    * @access public
+    */
+   public function preparse(){}
+
+   /**
+    * Parses the templates of this page.
+    *
+    * @access public
+    */
+   public function parse()
+   {
+      $this->xhtml = new Helpers\XHTML();
+      $this->xhtml->head = new Helpers\Head();
+      if ($this->tpl)
+      {
+         if (!$this->config->alwaysParse && !$this->cs->isExpired($this->cacheKey))
+         {
+            $res = $this->cs->get($this->cacheKey);
+            $this->vs = $res[0];
+            $this->tpl = $res[1];
+            $this->uniqueID = $res[2];
+            $this->xhtml->body = $this->getByUniqueID($this->uniqueID);
+         }
+         else
+         {
+            $body = $this->html->parse($this->tpl, $this->tpl);
+            $this->uniqueID = $body->uniqueID;
+            $this->xhtml->body = $body;
+            if (!$this->config->alwaysParse) $this->cs->set($this->cacheKey, array($this->vs, $this->tpl, $body->uniqueID), 2592000);
+         }
+      }
+      else
+      {
+         $body = new POM\Body('page');
+         $this->xhtml->body = $body;
+         $this[$body->uniqueID] = $body;
+         $this->uniqueID = $body->uniqueID;
+         $this->tpl = new Core\Template();
+         $this->tpl->setTemplate($body->uniqueID, '');
+      }
+   }
+
+   public function input()
+   {
+      if ($this->fv['ajaxargs'] && $this->fv['ajaxfunc'])
+      {
+         $this->fv['ajaxargs'] = $this->ajax->getAjaxArguments($this->fv['ajaxargs']);
+         $this->fv = array_merge($this->fv, (array)$this->fv['ajaxargs'][0]);
+         $this->fv['ajaxargs'] = (array)$this->fv['ajaxargs'][1];
+      }
+      $this->uniqueID = $this->fv['ajaxkey'];
+      $this->reg->fv = $this->fv;
+   }
+
+   public function assign()
+   {
+      $this->loadViewState();
+      $this->loadTemplate();
+      if (!is_array($this->vs)) Web\JS::goURL($this->noSessionURL);
+      foreach ($this->vs as $vs)
+      {
+         $value = $this->fv[$this->uniqueID][$vs['parameters'][0]['uniqueID']];
+         if ($value === null || !$vs['extra']['assign']) continue;
+         $this[$vs['parameters'][0]['uniqueID']] = foo(new $vs['parameters'][1]['ctrlClass']($vs['parameters'][1]['id']))->setParameters($vs)->assign($value);
+      }
+   }
+
+   /**
+    * The initialization of a page.
+    * This method invokes only time for GET request to the page.
+    *
+    * @access public
+    */
+   public function init()
+   {
+      $this->invokeMethod('init', $this->uniqueID);
+   }
+
+   /**
+    * The loading of a page.
+    *
+    * @access public
+    */
+   public function load()
+   {
+      $this->invokeMethod('load', $this->uniqueID);
+   }
+
+   public function process()
+   {
+      if ($this->fv['ajaxfunc'] == '') return;
+      $func = new Core\Delegate($this->fv['ajaxfunc']);
+      if (!$this->checkCallBackPermissions($func)) return;
       ob_start();
-      $response = $method->call(empty($data['ajax-args']) ? [] : $data['ajax-args']);
-      $output = trim(ob_get_contents());
+      $func->call($this->fv['ajaxargs']);
+      $cnt = trim(ob_get_contents());
       ob_end_clean();
-      if (strlen($output)) $this->view->action('alert', $output);
-    }
-    $this->view->process($response);
-  }
+      if ($cnt != '') $this->ajax->alert($cnt);
+   }
 
-  /**
-   * Completes the page workflow.
-   * This method is executed each time you visit the page.
-   *
-   * @access public
-   */
-  public function unload()
-  {
-    $this->view->invoke('unload');
-  }
+   /**
+    * Unloding of a page.
+    *
+    * @access public
+    */
+   public function unload()
+   {
+      $this->invokeMethod('unload', $this->uniqueID);
+   }
+
+   public function redraw()
+   {
+      foreach ($this->controls as $ctrl)
+      {
+         $ctrl->redraw($this->vs[$ctrl->uniqueID]['parameters']);
+         $this->vs[$ctrl->uniqueID] = $ctrl->getParameters();
+      }
+   }
+
+   /**
+    * Executes all ajax-actions.
+    *
+    * @access public
+    */
+   public function perform()
+   {
+      $this->saveViewState();
+      $this->saveTemplate();
+      $this->ajax->perform();
+   }
+
+   /**
+    * Renders a page and outputs its html to the browser.
+    *
+    * @access public
+    */
+   public function show()
+   {
+      echo $this->render();
+      foreach ($this->controls as $ctrl) $this->vs[$ctrl->uniqueID] = $ctrl->getParameters();
+      $this->saveViewState();
+      $this->saveTemplate();
+   }
+
+   /**
+    * Renders a page.
+    *
+    * @return string
+    * @access public
+    */
+   public function render()
+   {
+      $html = $this->xhtml->render();
+      $this->cacheSet($html);
+      return $html;
+   }
+
+   /**
+    * Renders a page.
+    *
+    * @return string
+    * @access public
+    */
+   public function __toString()
+   {
+      try
+      {
+         return $this->render();
+      }
+      catch (\Exception $ex)
+      {
+         Core\Debugger::exceptionHandler($ex);
+      }
+   }
+
+   protected function invokeMethod($method, $uniqueID)
+   {
+      $vs = $this->getActualVS($uniqueID);
+      if ($vs['controls'])
+      {
+         foreach ($vs['controls'] as $uid => $v)
+         {
+            $this->invokeMethod($method, $uid);
+         }
+      }
+      if ($this->methodExists($uniqueID, $method))
+      {
+         $this->getByUniqueID($uniqueID)->{$method}();
+      }
+   }
+
+   protected function saveTemplate()
+   {
+      $this->cache->set('page_tpl_' . $this->uniqueID, $this->tpl, ini_get('session.gc_maxlifetime'));
+   }
+
+   protected function loadTemplate()
+   {
+      $this->tpl = $this->cache->get('page_tpl_' . $this->uniqueID);
+   }
+
+   protected function saveViewState()
+   {
+      $this->cache->set('page_vs_' . $this->uniqueID, $this->vs, ini_get('session.gc_maxlifetime'));
+   }
+
+   protected function loadViewState()
+   {
+      $this->vs = $this->cache->get('page_vs_' . $this->uniqueID);
+   }
+
+   private function checkCallBackPermissions(Core\Delegate $func)
+   {
+      foreach ($this->callBackPermissions as $permission) if ($func->in($permission)) return true;
+      if ($this->config->isDebug) throw new \Exception(err_msg('ERR_GENERAL_9', array($func)));
+      return false;
+   }
+
+   public function method($method, array $params = array(), $isStatic = false)
+   {
+      return Web\Ajax::ajaxCall((($isStatic) ? '::' : '->') . $method, $params);
+   }
 }
+
+?>

@@ -1,10 +1,3 @@
-var ImgEditor = function(el, pom)
-{
-  ImgEditor.superclass.constructor.call(this, el, pom);
-};
-
-$pom.registerControl('imgeditor', ImgEditor, Popup);
-
 var ImageEditor = function()
 {
    this.options =
@@ -135,7 +128,7 @@ var ImageEditor = function()
       el.id = this.options.editorID + '_container';
       el.className = 'imgeditor_container';
       area.appendChild(el);
-      
+
       this.paper = Raphael(this.options.editorID + '_container', this.options.canvasWidth, this.options.canvasHeight);
 
       controls.makeDraggable(crop, this.options.editorID, null, function(){bind.redrawShadow();});
@@ -524,8 +517,8 @@ var ImageEditorManager = function()
    this.init = function(url, width, height, options)
    {
       this.show();
-	     controls.centre(this.id);
       this.setup(url, width, height, options);
+      controls.centre(this.id);
    };
 
    this.setup = function(url, width, height, options)
@@ -535,6 +528,7 @@ var ImageEditorManager = function()
       this.edt = new ImageEditor();
       this.edt.initialize(options);
       this.edt.options.ID = this.id;
+      this.edt.read(url, width, height);
       if (!options.hideCrop) this.edt.cropShow(true);
       else this.edt.cropHide();
       controls.$('width_' + this.id).innerHTML = width;
@@ -548,25 +542,19 @@ var ImageEditorManager = function()
       var rotate = function(target)
       {
          var pos = controls.getPosition(target), coor = controls.getCoordinates(target.parentNode), angle = Math.round(360 * (pos.x - coor.left) / (coor.width - 10));
-         if (angle < 0 ) angle = 0;
          controls.$(options.angleID).value = angle;
          bind.edt.transform(angle, controls.$(options.zoomID).value, 0, 0);
       };
       var zoom = function(target)
       {
          var pos = controls.getPosition(target), coor = controls.getCoordinates(target.parentNode), scale = Math.round(199 * (pos.x - coor.left) / (coor.width - 10) + 1);
-         if (scale < 0) scale = 0;
          controls.$(options.zoomID).value = scale;
          bind.edt.transform(controls.$(options.angleID).value, scale, 0, 0);
       };
-      this.edt.read(url, width, height);
-      setTimeout(function()
-      {
-        coor = controls.getCoordinates('slider_rotate_' + bind.id);
-        controls.makeDraggable(controls.$('slider_rotate_' + bind.id).firstChild, null, null, rotate, null, {x: [coor.left, coor.right - 10], y: [coor.top - 11, coor.top - 11]});
-        coor = controls.getCoordinates('slider_zoom_' + bind.id);
-        controls.makeDraggable(controls.$('slider_zoom_' + bind.id).firstChild, null, null, zoom, null, {x: [coor.left, coor.right - 10], y: [coor.top - 11, coor.top - 11]});
-      }, 100);
+      coor = controls.getCoordinates('slider_rotate_' + this.id);
+      controls.makeDraggable(controls.$('slider_rotate_' + this.id).firstChild, null, null, rotate, null, {x: [coor.left, coor.right - 10], y: [coor.top - 11, coor.top - 11]});
+      coor = controls.getCoordinates('slider_zoom_' + this.id);
+      controls.makeDraggable(controls.$('slider_zoom_' + this.id).firstChild, null, null, zoom, null, {x: [coor.left, coor.right - 10], y: [coor.top - 11, coor.top - 11]});
    };
 
    this._setSliderValue = function(el, value, minValue, maxValue)
@@ -580,24 +568,3 @@ var ImageEditorManager = function()
 };
 
 var iem = new ImageEditorManager();
-
-var lockButtons = new Array();
-var safeButtonClick = function(uniqueID, job) {
-   if (lockButtons[uniqueID]) {
-	   return;
-   }
-   lockButtons[uniqueID] = 1;
-   eval(job);
-}
-
-var checkTransparent = function(el){
-    var checked;
-    if ($(el).hasClass('ui-state-active')){
-        $(el).removeClass('ui-state-active');
-        checked = false;
-    } else {
-        $(el).addClass('ui-state-active');
-        checked = true;
-    }
-    $(el).parent().parent().parent().find('input').val(checked);
-}

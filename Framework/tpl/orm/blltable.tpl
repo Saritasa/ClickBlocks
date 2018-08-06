@@ -6,9 +6,8 @@ use ClickBlocks\Core,
 
 /**
 <?php echo $properties; ?>
- */ 
-class <?php echo $class; ?> extends <?php echo $parent; ?> 
-{
+ */
+class <?php echo $class; ?> extends <?php echo $parent.PHP_EOL; ?>{
     public function __construct()
     {
         parent::__construct();

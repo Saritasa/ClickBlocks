@@ -1,1162 +1,342 @@
 <?php
-/**
- * ClickBlocks.PHP v. 1.0
- *
- * Copyright (C) 2014  SARITASA LLC
- * http://www.saritasa.com
- *
- * This framework is free software. You can redistribute it and/or modify
- * it under the terms of either the current ClickBlocks.PHP License
- * viewable at theclickblocks.com) or the License that was distributed with
- * this file.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY, without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- * You should have received a copy of the ClickBlocks.PHP License
- * along with this program.
- *
- * @copyright  2007-2014 SARITASA LLC <info@saritasa.com>
- * @link       http://www.saritasa.com
- */
 
 namespace ClickBlocks\DB;
 
 use ClickBlocks\Core,
-    ClickBlocks\Cache,
-    ClickBlocks\Net;
+    ClickBlocks\Cache;
+
+interface IDB
+{
+   public function execute($sql, array $data = array(), $type = DB::DB_EXEC, $style = \PDO::FETCH_BOTH);
+   public function insert($table, array $data);
+   public function replace($table, array $data, $where = null);
+   public function update($table, array $data, $where = null);
+   public function delete($table, $where = null);
+   public function row($sql, array $data = array(), $style = \PDO::FETCH_ASSOC);
+   public function rows($sql, array $data = array(), $style = \PDO::FETCH_ASSOC);
+   public function col($sql, array $data = array());
+   public function cols($sql, array $data = array());
+   public function couples($sql, array $data = array());
+
+}
 
 /**
- * Base class for database interaction. Provides low-level operation with relation databases via PDO extension.
- *
- * @version 1.0.0
- * @package cb.db
- *
- * @property-read \ClickBlocks\DB\SQLBuilder $sql
- * @property-read \PDO $pdo
+ * @property SQLBuilder $sql
+ * @property $pdo
  */
-class DB
+class DB implements IDB
 {
-  /**
-   * Error message templates.
-   */
-  const ERR_DB_1 = 'DSN is empty. You should set DSN to be able to connect to database.';
-  const ERR_DB_2 = 'DSN is wrong.';
+   const DB_EXEC = 0;
+   const DB_COLUMN = 1;
+   const DB_COLUMNS = 2;
+   const DB_ROW = 3;
+   const DB_ROWS = 4;
+   const DB_COUPLE = 5;
 
-  /**
-   * These constants affect the format of the output data of method "execute".
-   */
-  const EXEC = 'exec';
-  const CELL = 'cell';
-  const COLUMN = 'column';
-  const ROW = 'row';
-  const ROWS = 'rows';
-  const COUPLES = 'couples';
-  
-  /**
-   * An instance of PDO class.
-   *
-   * @var PDO $pdo
-   * @access private
-   */
-  private $pdo = null;
-  
-  /**
-   * An instance of ClickBlocks\DB\SQLBuilder class.
-   *
-   * @var \ClickBlocks\DB\SQLBuilder $sql
-   * @access private
-   */
-  private $sql = null;
-  
-  /**
-   * DSN information of the current connection.
-   *
-   * @var array $idsn
-   * @access protected
-   */
-  protected $idsn = [];
-  
-  /**
-   * Contains regular expression patterns for query caching.
-   *
-   * @var array $patterns
-   * @access protected
-   */
-  protected $patterns = [];
-  
-  /**
-   * An instance of ClickBlocks\Cache\Cache class.
-   *
-   * @var \ClickBlocks\Cache\Cache $cache
-   * @access protected
-   */
-  protected $cache = null;
-  
-  /**
-   * Contains a number of affected rows as the result of the last operation.
-   *
-   * @var integer $affectedRows
-   * @access protected
-   */
-  protected $affectedRows = null;
-  
-  /**
-   * The mapping between PDO drivers and database engines.
-   *
-   * @var array $engines
-   * @access protected
-   */
-  protected $engines = ['mysql' => 'MySQL',
-                        'mysqli' => 'MySQL',
-                        'pgsql' => 'PostgreSQL',
-                        'sqlite' => 'SQLite',
-                        'sqlite2' => 'SQLite',
-                        'mssql' => 'MSSQL',
-                        'dblib' => 'MSSQL',
-                        'sqlsrv' => 'MSSQL',
-                        'oci' => 'OCI',
-                        'oci8' => 'OCI'];
-  
-  /**
-   * if this variable is TRUE then each query execution will be logged, otherwise won't.   
-   *
-   * @var boolean $logging
-   * @access public
-   */
-  public $logging = false;
-  
-  /**
-   * Default query cache lifetime in seconds.
-   * Caching queries does not occur if $cacheExpire equals FALSE or 0.
-   * if $cacheExpire less than 0 the cache lifetime will equal the database cache vault lifetime.
-   *
-   * @var integer $cacheExpire
-   * @access public
-   */
-  public $cacheExpire = 0;
-  
-  /**
-   * Default cache group of all cached query results.
-   *
-   * @var string $cacheGroup
-   * @access public
-   */
-  public $cacheGroup = 'db';
-  
-  /**
-   * Default charset is used for database connection.
-   *
-   * @var string $charset
-   * @access public
-   */
-  public $charset = null;
-  
-  /**
-   * DSN for the default connection.
-   *
-   * @var string $dsn
-   * @access public
-   */
-  public $dsn = null;
-  
-  /**
-   * Username for the default connection.
-   *
-   * @var string $username
-   * @access public
-   */
-  public $username = null;
-  
-  /**
-   * Password for the default connection.
-   *
-   * @var string $password
-   * @access public
-   */
-  public $password = null;
-  
-  /**
-   * Options for the default connection.
-   *
-   * @var array $options
-   * @access public
-   */
-  public $options = [];
+   private $pdo = null;
+   private $sql = null;
+   private $dsn = array();
+   private $error = array();
 
-  /**
-   * Constructor of this class. Allows to set parameters of the default connection.
-   *
-   * @param string $dsn
-   * @param string $username
-   * @param string $password
-   * @param array $options
-   * @access public
-   */
-  public function __construct($dsn = null, $username = null, $password = null, array $options = null)
-  {
-    $this->dsn = $dsn;
-    $this->username = $username;
-    $this->password = $password;
-    $this->options = $options;
-    $config = \CB::getInstance()['db'];
-    if (isset($config['logging'])) $this->logging = (bool)$config['logging'];
-    if (isset($config['cacheExpire'])) $this->cacheExpire = (int)$config['cacheExpire'];
-    if (isset($config['cacheGroup'])) $this->cacheGroup = $config['cacheGroup'];
-  }
-  
-  /**
-   * This method is automatically called before serialization process of an object of the class.
-   *
-   * @return array
-   * @access public
-   */
-  public function __sleep()
-  {
-    $this->pdo = null;
-    return array_keys(get_object_vars($this));
-  }
-  
-  /**
-   * This method is automatically called after unserialization process of an object of the class.
-   *
-   * @access public
-   */
-  public function __wakeup()
-  {
-    if (count($this->idsn)) $this->connect($this->idsn['dsn'], $this->idsn['username'], $this->idsn['password'], $this->idsn['options']);
-  }
+   protected $reg = null;
+   protected $cachedSQL = array();
+   protected static $statistic = array();
 
-  /**
-   * Returns values of one of two properties: "pdo" or "sql".
-   * Value of property "pdo" is an instance of class \PDO that represents the internal interface between PHP and database layer.
-   * Value of property "sql" is an instance of class ClickBlocks\DB\SQLBuilder that provides unified way to construct complex SQL queries.
-   *
-   * @param string $param - the property name.
-   * @return \PDO | \ClickBlocks\DB\SQLBuilder
-   * @access public
-   * @throws Core\Exception
-   */
-  public function __get($param)
-  {
-    if ($param == 'pdo')
-    {
-      if (is_object($this->pdo)) return $this->pdo;
-      $this->connect($this->dsn, $this->username, $this->password, $this->options);
-      return $this->pdo;
-    }
-    if ($param == 'sql')
-    {
-      if ($this->sql instanceof SQLBuilder) return $this->sql;
-      $this->connect($this->dsn, $this->username, $this->password, $this->options);
-      return $this->sql;
-    }
-    throw new Core\Exception('CB::ERR_GENERAL_3', $param, get_class($this));
-  }
-  
-  /**
-   * Returns an instance of caching class.
-   *
-   * @return \ClickBlocks\Cache\Cache
-   * @access public
-   */
-  public function getCache()
-  {
-    if ($this->cache === null) $this->cache = \CB::getInstance()->getCache();
-    return $this->cache;
-  }
-  
-  /**
-   * Sets an instance of caching class.
-   *
-   * @param \ClickBlocks\Cache\Cache $cache
-   * @access public
-   */
-  public function setCache(Cache\Cache $cache)
-  {
-    $this->cache = $cache;
-  }
+   public $expire = 900;
+   public $cached = false;
+   public $catchException = false;
+   public $affectedRows = null;
 
-  /**
-   * Opens database connection. If the connection is already set then it will be closed before creating of new connection.
-   *
-   * @param string $dsn
-   * @param string $username
-   * @param string $password
-   * @param array $options
-   * @access public
-   * @throws Core\Exception
-   */
-  public function connect($dsn = null, $username = null, $password = null, array $options = null)
-  {
-    if ($dsn === null) $dsn = $this->dsn;
-    if ($username === null) $username = $this->username;
-    if ($password === null) $password = $this->password;
-    if ($options === null) $options = $this->options;
-    if (!$dsn) throw new Core\Exception($this, 'ERR_DB_1');
-    $this->disconnect();
-    // Extracting the database driver.
-    do
-    {
-      $dsn = get_cfg_var('pdo.dsn.' . $dsn) ?: $dsn;
-      $this->idsn['dsn'] = $dsn;
-      $dsn = explode(':', $dsn, 2);
-      $this->idsn['driver'] = strtolower($dsn[0]);
-      if ($this->idsn['driver'] == 'uri') 
+   public function __construct()
+   {
+      $this->reg = Core\Register::getInstance();
+   }
+
+   public function __get($param)
+   {
+      if ($param == 'sql') return $this->sql;
+      if ($param == 'pdo') return $this->pdo;
+      throw new \Exception(err_msg('ERR_GENERAL_3', array($param, get_class($this))));
+   }
+
+   public function connect($dsn, $username, $password, $options = null)
+   {
+      $this->parseDSN($dsn);
+      $this->pdo = new \PDO($dsn, $username, $password, $options);
+      $this->sql = new SQLBuilder($this->dsn);
+   }
+
+   public function disconnect()
+   {
+      $this->pdo = $this->sql = null;
+      $this->dsn = array();
+   }
+
+   public function getDataBaseName()
+   {
+      return $this->dsn['dbname'];
+   }
+
+   public function getHost()
+   {
+      return $this->dsn['host'];
+   }
+
+   public function getPort()
+   {
+      return $this->dsn['port'];
+   }
+
+   public function getEngine()
+   {
+      return $this->dsn['engine'];
+   }
+
+   public function getDSN()
+   {
+      return $this->dsn;
+   }
+
+   public function getLastError()
+   {
+      return $this->error;
+   }
+
+   public static function getStatistic()
+   {
+      return self::$statistic;
+   }
+
+   public function wrap($str)
+   {
+      return $this->sql->wrap($str);
+   }
+
+   public function quote($str)
+   {
+      return $this->pdo->quote($str);
+   }
+
+   public function execute($sql, array $data = array(), $type = self::DB_EXEC, $style = \PDO::FETCH_BOTH)
+   {
+      if ($this->cached && $this->reg->cache instanceof Cache\ICache && $type != self::DB_EXEC)
       {
-        unset($dsn[0]);
-        unset($dsn[1]);
-        $dsn[2] = ltrim($dsn[2], '/');
-        $dsn = file_get_contents(implode(':', $dsn));
+         $key = strtr($sql, $data);
+         $flag = $this->parseCachedSQL($sql);
+         if ($flag && $this->reg->cache->isExists($key)) return $this->reg->cache->get($key);
       }
-    }
-    while ($this->idsn['driver'] == 'uri');
-    if (empty($dsn[1])) throw new Core\Exception($this, 'ERR_DB_2');
-    // Extracting the driver specific information.
-    if ($this->idsn['driver'] == 'sqlite')
-    {
-      $this->idsn['host'] = '127.0.0.1';
-      $this->idsn['dbname'] = pathinfo($dsn[1], PATHINFO_FILENAME);
-    }
-    else
-    {
+      $logger = Core\Logger::getInstance();
+      $logger->pStart('db_sql_log');
+      $st = $this->pdo->prepare($sql);
+      if (!$st->execute($data))
+      {
+         $this->error = $st->errorInfo();
+         if ($this->catchException) throw new \Exception($this->error[2]);
+         else
+         {
+            self::$statistic[$this->dsn['dsn']][] = array('sql' => $sql, 'data' => $data, 'type' => $type, 'style' => $style, 'time' => $time, 'datetime' => date('Y-m-d H:i:s'));
+            Core\Debugger::exceptionHandler(new \Exception($this->error[2]), Core\Logger::LOG_CATEGORY_SQL_EXCEPTION);
+            exit;
+         }
+      }
+      $this->affectedRows = $st->rowCount();
+      $time = $logger->pStop('db_sql_log');
+      try {throw new \Exception();}
+      catch (\Exception $e) {$stack = $e->getTraceAsString();}
+      self::$statistic[$this->dsn['dsn']][] = array('sql' => $sql, 'data' => $data, 'type' => $type, 'style' => $style, 'time' => $time, 'datetime' => date('Y-m-d H:i:s'), 'affectedRows' => $this->affectedRows, 'stack' => $stack);
+      switch ($type)
+      {
+         case self::DB_EXEC:
+           $res = $this->affectedRows;
+           break;
+         case self::DB_COLUMN:
+           $res = $st->fetchColumn();
+           if (is_array($res)) $res = end($res);
+           break;
+         case self::DB_COLUMNS:
+           $res = array(); while ($row = $st->fetch($style)) $res[] = array_shift($row);
+           break;
+         case self::DB_ROW:
+           $res = $st->fetch($style);
+           if ($res === false) $res = array();
+           break;
+         case self::DB_ROWS:
+           $res = $st->fetchAll($style);
+           break;
+         case self::DB_COUPLE:
+           $rows = $st->fetchAll(\PDO::FETCH_NUM); $res = array();
+           if (is_array($rows[0])) foreach ($rows as $v) $res[$v[0]] = $v[1];
+           break;
+      }
+      if ($this->cached && $this->reg->cache instanceof Cache\ICache && $type != self::DB_EXEC && $flag) $this->reg->cache->set($key, $res, $this->expire);
+      return $res;
+   }
+
+   public function insert($table, array $data)
+   {
+      $this->execute($this->sql->insert($table, $data), $data, self::DB_EXEC);
+      if ($this->getEngine() == 'mssql') return $this->col('SELECT @@IDENTITY');
+      return $this->pdo->lastInsertId();
+   }
+
+   public function update($table, array $data, $where = null)
+   {
+      return $this->execute($this->sql->update($table, $data, $where), is_string($where) ? $data : array_merge($data, (array)$where), self::DB_EXEC);
+   }
+
+   public function replace($table, array $data, $where = null)
+   {
+      return $this->execute($this->sql->replace($table, $data, $where), is_string($where) ? $data : array_merge($data, (array)$where), self::DB_EXEC);
+   }
+
+   public function delete($table, $where = null)
+   {
+      return $this->execute($this->sql->delete($table, $where), (array)$where, self::DB_EXEC);
+   }
+
+   public function col($sql, array $data = array())
+   {
+      return $this->execute($sql, $data, self::DB_COLUMN);
+   }
+
+   public function cols($sql, array $data = array())
+   {
+      return $this->execute($sql, $data, self::DB_COLUMNS);
+   }
+
+   public function row($sql, array $data = array(), $style = \PDO::FETCH_ASSOC)
+   {
+      return $this->execute($sql, $data, self::DB_ROW, $style);
+   }
+
+   public function rows($sql, array $data = array(), $style = \PDO::FETCH_ASSOC)
+   {
+      return $this->execute($sql, $data, self::DB_ROWS, $style);
+   }
+
+   public function couples($sql, array $data = array())
+   {
+      return $this->execute($sql, $data, self::DB_COUPLE);
+   }
+
+   public function getFields($table)
+   {
+      $rows = $this->rows($this->sql->getSQL('ShowFields', $table));
+      switch ($this->getEngine())
+      {
+         case 'mssql':
+           return $rows;
+         case 'mysql':
+           $fields = array();
+           foreach ($rows as $row)
+           {
+              preg_match('/.+\(([\d\w,\']+)\)/U', $row['Type'], $arr);
+              $field = $row['Field'];
+              $fields[$field]['Field'] = $row['Field'];
+              $fields[$field]['PK'] = intval(($row['Key'] == 'PRI'));
+              $fields[$field]['isNullable'] = (int)($row['Null'] != 'NO');
+              $fields[$field]['isAutoIncrement'] = ($row['Extra'] == 'auto_increment') ? 1 : null;
+              $fields[$field]['Type'] = $type = preg_replace('/\([\d\w,\']+\)/U', '', $row['Type']);
+              $fields[$field]['DefaultValue'] = ($type == 'bit') ? substr($row['Default'], 2, 1) : $row['Default'];
+              $fields[$field]['MaxLength'] = 0;
+              $fields[$field]['Precision'] = 0;
+              if (substr($type, -8) == 'unsigned')
+              {
+                 $fields[$field]['Type'] = trim(substr($type, 0, -8));
+                 $fields[$field]['isUnsigned'] = 1;
+              }
+              else $fields[$field]['isUnsigned'] = 0;
+              $arr = explode(',', $arr[1]);
+              if ($type == 'enum' || $type == 'set') $fields[$field]['Set'] = $arr;
+              else
+              {
+                 $fields[$field]['Set'] = null;
+                 if (count($arr) == 1) $fields[$field]['MaxLength'] = $arr[0];
+                 else
+                 {
+                    $fields[$field]['MaxLength'] = $arr[0];
+                    $fields[$field]['Precision'] = $arr[1];
+                 }
+              }
+           }
+           return $fields;
+      }
+   }
+
+   public function getTables()
+   {
+      return $this->cols($this->sql->getSQL('ShowTables'));
+   }
+
+   public function getCreateOperator($table)
+   {
+      $row = $this->row($this->sql->getSQL('ShowCreateOperator', $table), array(), \PDO::FETCH_NUM);
+      return $row[1];
+   }
+
+   public function getDataBases()
+   {
+      return $this->cols($this->sql->getSQL('ShowDataBases'));
+   }
+
+   public function createTable($name, array $fields, array $pk = null, $engine = null, $charset = 'utf8')
+   {
+      return $this->execute($this->sql->getSQL('CreateTable', array($name, $fields, $pk, $engine, $charset)));
+   }
+
+   public function addField($table, array $params)
+   {
+      return $this->execute($this->sql->getSQL('AddField', array($table, $params)));
+   }
+
+   public function deleteField($table, $field)
+   {
+      return $this->execute($this->sql->getSQL('DeleteField', array($table, $field)));
+   }
+
+   public function changeField($table, $field, array $params)
+   {
+      return $this->execute($this->sql->getSQL('ChangeField', array($table, $field, $params)));
+   }
+
+   public function addSQL($sql, $isCached = true)
+   {
+      $this->cachedSQL[$sql] = $isCached;
+   }
+
+   public function deleteSQL($sql)
+   {
+      unset($this->cachedSQL[$sql]);
+   }
+   public function lastInsertId()
+   {
+      return $this->pdo->lastInsertId();
+   }
+
+   protected function parseCachedSQL(&$sql)
+   {
+      foreach ($this->cachedSQL as $s => $isCached)
+      {
+         $flag = preg_match('@' . $s . '@isU', $sql);
+         if ($isCached) if ($flag) {$sql = $s; return true;}
+         else if ($flag) return false;
+      }
+      return true;
+   }
+
+   private function parseDSN($dsn)
+   {
+      $this->dsn = array('dsn' => $dsn);
+      $dsn = explode(':', $dsn);
+      $this->dsn['engine'] = ($dsn[0] == 'dblib') ? 'mssql' : $dsn[0];
       $dsn = explode(';', $dsn[1]);
       foreach ($dsn as $v)
       {
-        $v = explode('=', $v);
-        if (isset($v[1])) $this->idsn[strtolower(trim($v[0]))] = trim($v[1]);
+         $v = explode('=', $v);
+         $this->dsn[strtolower(trim($v[0]))] = trim($v[1]);
       }
-    }
-    if ($this->idsn['driver'] == 'oci' || $this->idsn['driver'] == 'oci8')
-    {
-      $dsn = $this->idsn['dbname'];
-      $v = explode('/', $dsn);
-      $this->idsn['dbname'] = array_pop($v);
-      if (isset($this->idsn['schema'])) $this->idsn['dbname'] = $this->idsn['schema'];
-      if (count($v))
-      {
-        $v = explode(':', array_pop($v));
-        if (count($v) > 1) $this->idsn['port'] = array_pop($v);
-        $this->idsn['host'] = array_pop($v);
-      }
-    }
-    // Connecting to the database.
-    $this->idsn['username'] = $username;
-    $this->idsn['password'] = $password;
-    $this->idsn['options'] = $options;
-    switch ($this->idsn['driver'])
-    {
-      case 'oci8':
-        $this->pdo = new OCI8($dsn, $username, $password, isset($this->idsn['charset']) ? array_merge((array)$options, ['charset' => $this->idsn['charset']]) : $options);
-        break;
-      default:
-        switch ($this->engines[$this->idsn['driver']])
-        {
-          case 'MSSQL':
-            $this->pdo = new MSSQL($this->idsn['dsn'], $username, $password, $options);
-            break;
-          case 'OCI':
-            $this->pdo = new OCI($this->idsn['dsn'], $username, $password, $options);
-            break;
-          default:
-            $this->pdo = new \PDO($this->idsn['dsn'], $username, $password, $options);
-            break;
-        }
-        break;
-    }
-    $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-    if (!empty($this->charset))
-    {
-      if (in_array($this->idsn['driver'], ['mysql', 'mysqli', 'pgsql'])) $this->pdo->exec('SET NAMES ' . $this->pdo->quote($this->charset));
-    }
-    $this->sql = SQLBuilder::getInstance($this->getEngine(), $this);
-  }
-
-  /**
-   * Terminates the current database connection.
-   *
-   * @access public
-   */
-  public function disconnect()
-  {
-    $this->pdo = $this->sql = null;
-    $this->idsn = [];
-  }
-  
-  /**
-   * Checks whether the database connection is set.
-   *
-   * @return boolean
-   * @access public
-   */
-  public function isConnected()
-  {
-    return $this->pdo !== null;
-  }
-
-  /** 
-   * Returns the database name for the current connection.
-   * The method returns FALSE if the connection is not set.
-   *
-   * @return string
-   * @access public
-   */
-  public function getDBName()
-  {
-    return $this->isConnected() ? $this->idsn['dbname'] : false;
-  }
-  
-  /** 
-   * Returns the host of the current connection.
-   * The method returns FALSE if the connection is not set.
-   *
-   * @return string
-   * @access public
-   */
-  public function getHost()
-  {
-    return $this->isConnected() ? $this->idsn['host'] : false;
-  }
-  
-  /**
-   * Returns the port of the current connection.
-   * The method returns FALSE if the connection is not set.
-   *
-   * @return integer
-   * @access public
-   */
-  public function getPort()
-  {
-    return $this->isConnected() ? $this->idsn['port'] : false;
-  }
-  
-  /**
-   * Returns the driver name of the current connection.
-   * The method returns FALSE if the connection is not set.
-   *
-   * @return string
-   * @access public
-   */
-  public function getDriver()
-  {
-    return $this->isConnected() ? $this->idsn['driver'] : false;
-  }
-  
-  /**
-   * Returns all DSN information of the current connection.
-   * The method returns FALSE if the connection is not set.
-   *
-   * @return array
-   * @access public
-   */
-  public function getDSN()
-  {
-    return $this->isConnected() ? $this->idsn : false;
-  }
-  
-  /**
-   * Returns the engine of the current connection.
-   * The method returns FALSE if the connection is not set.
-   *
-   * @return string
-   * @access public
-   */
-  public function getEngine()
-  {
-    return $this->isConnected() ? $this->engines[$this->idsn['driver']] : false;
-  }
-
-  /**
-   * Returns extended error information associated with the last operation on the database handle.
-   *
-   * @return array
-   * @access public
-   * @throws Core\Exception
-   */
-  public function getLastError()
-  {
-    return $this->__get('pdo')->errorInfo();
-  }
-  
-  /**
-   * Return an array of all available PDO drivers.
-   *
-   * @return array
-   * @access public
-   * @static
-   */
-  public static function getAvailableDrivers()
-  {
-    return \PDO::getAvailableDrivers();
-  }
-  
-  /**
-   * Returns PDO type of a PHP-variable.
-   *
-   * @param mixed $var - the PHP-variable.
-   * @return integer
-   * @access public
-   * @static
-   */
-  public static function getPDOType($var)
-  {
-    if (is_int($var)) return \PDO::PARAM_INT;
-    if (is_bool($var)) return \PDO::PARAM_BOOL;
-    if (is_null($var)) return \PDO::PARAM_NULL;
-    return \PDO::PARAM_STR;
-  }
-
-  /**
-   * Returns the case of the column names.
-   *
-   * @return mixed
-   * @acess public
-   * @throws Core\Exception
-   */
-  public function getColumnCase()
-  {
-    return $this->__get('pdo')->getAttribute(\PDO::ATTR_CASE);
-  }
-
-  /**
-   * Sets the case of the column names.
-   *
-   * @param mixed $value
-   * @access public
-   * @throws Core\Exception
-   */
-  public function setColumnCase($value)
-  {
-    $this->__get('pdo')->setAttribute(\PDO::ATTR_CASE, $value);
-  }
-
-  /**
-   * Returns how the null and empty strings are converted.
-   *
-   * @return mixed
-   * @throws Core\Exception
-   */
-  public function getNullConversion()
-  {
-    return $this->__get('pdo')->getAttribute(\PDO::ATTR_ORACLE_NULLS);
-  }
-
-  /**
-   * Sets how the null and empty strings are converted.
-   *
-   * @param mixed $value
-   * @access public
-   * @throws Core\Exception
-   */
-  public function setNullConversion($value)
-  {
-    $this->__get('pdo')->setAttribute(\PDO::ATTR_ORACLE_NULLS, $value);
-  }
-
-  /**
-   * Returns whether creating or updating a DB record will be automatically committed.
-   * Some DBMS (such as sqlite) may not support this feature.
-   *
-   * @return boolean
-   * @access public
-   * @throws Core\Exception
-   */
-  public function getAutoCommit()
-  {
-    return $this->__get('pdo')->getAttribute(\PDO::ATTR_AUTOCOMMIT);
-  }
-
-  /**
-   * Sets whether creating or updating a DB record will be automatically committed.
-   *
-   * @param boolean $value
-   * @access public
-   * @throws Core\Exception
-   */
-  public function setAutoCommit($value)
-  {
-    $this->__get('pdo')->setAttribute(\PDO::ATTR_AUTOCOMMIT, $value);
-  }
-
-  /**
-   * Returns whether the connection is persistent or not.
-   *
-   * @return boolean
-   * @access public
-   * @throws Core\Exception
-   */
-  public function getPersistent()
-  {
-    return $this->__get('pdo')->getAttribute(\PDO::ATTR_PERSISTENT);
-  }
-
-  /**
-   * Sets whether the connection is persistent or not.
-   *
-   * @param boolean $value
-   * @access public
-   * @return bool
-   * @throws Core\Exception
-   */
-  public function setPersistent($value)
-  {
-    return $this->__get('pdo')->setAttribute(\PDO::ATTR_PERSISTENT, $value);
-  }
-
-  /**
-   * Returns the version information of the DB driver.
-   *
-   * @return string
-   * @access public
-   * @throws Core\Exception
-   */
-  public function getClientVersion()
-  {
-    return $this->__get('pdo')->getAttribute(\PDO::ATTR_CLIENT_VERSION);
-  }
-
-  /**
-   * Returns the status of the connection.
-   *
-   * @return string
-   * @access public
-   * @throws Core\Exception
-   */
-  public function getConnectionStatus()
-  {
-    return $this->__get('pdo')->getAttribute(\PDO::ATTR_CONNECTION_STATUS);
-  }
-
-  /**
-   * Returns whether the connection performs data prefetching.
-   *
-   * @return boolean
-   * @access public
-   * @throws Core\Exception
-   */
-  public function getPrefetch()
-  {
-    return $this->__get('pdo')->getAttribute(\PDO::ATTR_PREFETCH);
-  }
-
-  /**
-   * Returns the information of DBMS server.
-   *
-   * @return string
-   * @access public
-   * @throws Core\Exception
-   */
-  public function getServerInfo()
-  {
-    return $this->__get('pdo')->getAttribute(\PDO::ATTR_SERVER_INFO);
-  }
-
-  /**
-   * Returns the version information of DBMS server.
-   *
-   * @return string
-   * @acess public
-   * @throws Core\Exception
-   */
-  public function getServerVersion()
-  {
-    return $this->__get('pdo')->getAttribute(\PDO::ATTR_SERVER_VERSION);
-  }
-
-  /**
-   * Returns the timeout settings for the connection.
-   *
-   * @return integer
-   * @access public
-   * @throws Core\Exception
-   */
-  public function getTimeout()
-  {
-    return $this->__get('pdo')->getAttribute(\PDO::ATTR_TIMEOUT);
-  }
-  
-  /**
-   * Returns the number of rows affected by the last SQL statement.
-   *
-   * @return integer
-   * @access public
-   */
-  public function getAffectedRows()
-  {
-    return $this->affectedRows;
-  }
-  
-  /**
-   * Returns the ID of the last inserted row or sequence value.
-   *
-   * @param string $name - name of the sequence object from which the ID should be returned.
-   * @return string
-   * @access public
-   */
-  public function getLastInsertID($sequenceName = null)
-  {
-    return $this->__get('pdo')->lastInsertId($sequenceName);
-  }
-
-  /**
-   * Quotes a table or column name for use in a query.
-   *
-   * @param string $name - the table or column name.
-   * @param boolean $isTableName - determines whether the first parameter is a table name.
-   * @return string
-   * @access public
-   */
-  public function wrap($name, $isTableName = false)
-  {
-    return $this->__get('sql')->wrap($name, $isTableName);
-  }
-
-  /**
-   * Quotes a value (or an array of values) to produce a result that can be used as a properly escaped data value in an SQL statement.
-   *
-   * @param string | array $value - if this value is an array then all its elements will be quoted.
-   * @param string $format - determines the format of the quoted value. This value must be one of the SQLBuilder::ESCAPE_* constants.
-   * @return string | array
-   * @access public
-   */
-  public function quote($value, $format = SQLBuilder::ESCAPE_QUOTED_VALUE)
-  {
-    return $this->__get('sql')->quote($value, $format);
-  }
-  
-  /**
-   * Initiates a transaction.
-   * Returns TRUE on success or FALSE on failure.
-   *
-   * @return boolean
-   * @access public
-   */
-  public function beginTransaction()
-  {
-    return $this->__get('pdo')->beginTransaction();
-  }
-  
-  /**
-   * Commits a transaction.
-   * Returns TRUE on success or FALSE on failure.
-   *
-   * @return boolean
-   * @access public
-   */
-  public function commit()
-  {
-    return $this->__get('pdo')->commit();
-  }
-  
-  /**
-   * Rolls back a transaction.
-   * Returns TRUE on success or FALSE on failure.
-   *
-   * @return boolean
-   * @access public
-   */
-  public function rollBack()
-  {
-    return $this->__get('pdo')->rollBack();
-  }
-  
-  /**
-   * Checks if a transaction is currently active within the driver.
-   * Returns TRUE if a transaction is currently active, and FALSE if not.
-   *
-   * @return boolean
-   * @access public
-   */
-  public function inTransaction()
-  {
-    return $this->__get('pdo')->inTransaction();
-  }
-  
-  /**
-   * Adds a regular expression that determines SQL queries for caching.
-   *
-   * @param string $sql - the regular expression.
-   * @param integer | boolen $expire - the cache expiration time or false if we don't want to cache some group of queries.
-   * @access public   
-   */
-  public function addPattern($sql, $expire)
-  {
-    if ($expire !== false) $expire = abs((int)$expire);
-    $this->patterns[$sql] = $expire;
-  }
-
-  /**
-   * Removes a regular expression that determines the group of SQL queries to cache.
-   *
-   * @param string $sql - the regular expression.
-   * @access public
-   */
-  public function dropPattern($sql)
-  {
-    unset($this->patterns[$sql]);
-  }
-
-  /**
-   * Executes the SQL statement. Returns FALSE on failure.
-   *
-   * @param string $sql - a SQL to execute.
-   * @param array $data - input parameters for the SQL execution.
-   * @param string $type - type execution of the query. This parameter affects format of the data returned by the method.
-   * @param integer $mode - fetch mode for this SQL statement.
-   * @param mixed $arg - this argument have a different meaning depending on the value of the $mode parameter.
-   * @param array $ctorargs - arguments of custom class constructor when the $mode parameter is PDO::FETCH_CLASS.
-   * @return mixed
-   * @access public
-   */
-  public function execute($sql, array $data = [], $type = self::EXEC, $mode = \PDO::FETCH_ASSOC, $arg = null, array $ctorargs = null)
-  {
-    if ($type && $type != self::EXEC && ((int)$this->cacheExpire != 0 || count($this->patterns)))
-    {
-      $key = $this->assemble($sql, $data);
-      $flag = true;
-      foreach ($this->patterns as $pattern => $expire)
-      {
-        if (preg_match($pattern, $sql))
-        {
-          $flag = !empty($expire);
-          break;
-        }
-      }
-      if ($flag && !$this->getCache()->isExpired($key)) return $this->getCache()->get($key);
-    }
-    $st = $this->__get('pdo')->prepare($sql);
-    $this->prepare($st, $sql, $data);
-    if ($this->logging && isset(\CB::getInstance()['db']['log']))
-    {
-      $id = microtime(true);
-      \CB::pStart($id);
-      $res = $st->execute();
-      $duration = \CB::pStop($id);
-      $this->affectedRows = $st->rowCount();
-      $file = \CB::dir(\CB::getInstance()['db']['log']);
-      $dir = pathinfo($file, PATHINFO_DIRNAME);
-      if (!is_dir($dir)) mkdir($dir, 0775, true);
-      $fp = fopen($file, 'a');
-      flock($fp, LOCK_EX);
-      if (fstat($fp)['size'] == 0) fputcsv($fp, ['URL', 'DSN', 'SQL', 'Type', 'Mode', 'Duration', 'Timestamp', 'Rows', 'Stack']);
-      fputcsv($fp, [Net\URL::current(), $this->idsn['dsn'], isset($key) ? $key : $this->assemble($sql, $data), $type, $mode, $duration, time(), $this->affectedRows, (new \Exception())->getTraceAsString()]);
-      fflush($fp);
-      flock($fp, LOCK_UN);
-      fclose($fp);
-    }
-    else
-    {
-      $res = $st->execute();
-      $this->affectedRows = $st->rowCount();
-    }
-    if ($res === false) return false;
-    switch ($type)
-    {
-      case self::EXEC:
-        $res = $this->affectedRows;
-        break;
-      case self::CELL:
-        $res = $st->fetchColumn((int)$arg);
-        break;
-      case self::COLUMN:
-        $res = $st->fetchAll($mode | \PDO::FETCH_COLUMN, (int)$arg);
-        break;
-      case self::ROW:
-        $res = $st->fetch($mode);
-        if ($res === false) $res = [];
-        break;
-      case self::ROWS:
-      case self::COUPLES:
-        if ($arg === null) $res = $st->fetchAll($mode);
-        else
-        {
-          if ($ctorargs === null) $res = $st->fetchAll($mode, $arg);
-          else $res = $st->fetchAll($mode, $arg, $ctorargs);
-        }
-        if ($type == self::COUPLES)
-        {
-          $tmp = [];
-          foreach ($res as $v) $tmp[array_shift($v)] = $v;
-          $res = $tmp;
-        }
-        break;
-      default:
-        return new Reader($st, $mode, $arg, $ctorargs);
-    }
-    if ($type && $type != self::EXEC && !empty($flag)) 
-    {
-      if (empty($expire)) $expire = $this->cacheExpire > 0 ? $this->cacheExpire : $this->getCache()->getVaultLifeTime();
-      $this->getCache()->set($key, $res, $expire, $this->cacheGroup);
-    }
-    return $res;
-  }
-
-  /**
-   * Executes the SQL query and returns the value of the given column in the first row of data.
-   *
-   * @param string $sql - SQL query to execute.
-   * @param array $data - the input parameters for the SQL execution.
-   * @param integer $column - 0-indexed number of the column you wish to retrieve from the row.
-   * @return string - returns FALSE when a value is not found.
-   * @access public
-   */
-  public function cell($sql, array $data = [], $column = 0)
-  {
-    return $this->execute($sql, $data, self::CELL, \PDO::FETCH_COLUMN, $column);
-  }
-
-  /**
-   * Executes the SQL query and returns the given column of the result.
-   *
-   * @param string $sql - SQL query to execute.
-   * @param array $data - the input parameters for the SQL execution.
-   * @param integer $column - 0-indexed number of the column you wish to retrieve from the row.
-   * @return array
-   * @access public
-   */
-  public function column($sql, array $data = [], $column = 0)
-  {
-    return $this->execute($sql, $data, self::COLUMN, \PDO::FETCH_COLUMN, $column);
-  }
-
-  /**
-   * Executes the SQL query and returns the first row of the result.
-   *
-   * @param string $sql - SQL query to execute.
-   * @param array $data - the input parameters for the SQL execution.
-   * @param integer $mode - the fetch mode for this SQL statement.
-   * @return array
-   * @access public
-   */
-  public function row($sql, array $data = [], $mode = \PDO::FETCH_ASSOC)
-  {
-    return $this->execute($sql, $data, self::ROW, $mode);
-  }
-  
-  /**
-   * Executes the SQL query and returns all rows.
-   *
-   * @param string $sql - SQL query to execute.
-   * @param array $data - the input parameters for the SQL execution.
-   * @param integer $mode - the fetch mode for this SQL statement.
-   * @param mixed $arg - this argument have a different meaning depending on the value of the $mode parameter.
-   * @param array $ctorargs - arguments of custom class constructor when the $mode parameter is PDO::FETCH_CLASS.
-   * @return array
-   * @access public
-   */
-  public function rows($sql, array $data = [], $mode = \PDO::FETCH_ASSOC, $arg = null, array $ctorargs = null)
-  {
-    return $this->execute($sql, $data, self::ROWS, $mode, $arg, $ctorargs);
-  }
-  
-  /**
-   * This method is similar to the method "rows" but returns a two-column result into an array 
-   * where the first column is a key and the second column is the value.
-   *
-   * @param string $sql - SQL query to execute.
-   * @param array $data - the input parameters for the SQL execution.
-   * @return array
-   * @access public
-   */
-  public function pairs($sql, array $data = [])
-  {
-    return $this->rows($sql, $data, \PDO::FETCH_KEY_PAIR);
-  }
-  
-  /**
-   * Executes the SQL query and returns all rows which grouped by values of the first column.
-   *
-   * @param string $sql - SQL query to execute.
-   * @param array $data - the input parameters for the SQL execution.
-   * @param integer $mode - the fetch mode for this SQL statement.
-   * @return array
-   * @access public
-   */
-  public function groups($sql, array $data = [], $mode = \PDO::FETCH_ASSOC)
-  {
-    return $this->rows($sql, $data, $mode | \PDO::FETCH_GROUP);
-  }
-  
-  /**
-   * Executes the SQL query and returns all rows into an array
-   * where the first column is a key and the other columns are the values.
-   *
-   * @param string $sql - SQL query to execute.
-   * @param array $data - the input parameters for the SQL execution.
-   * @param integer $mode - the fetch mode for this SQL statement.
-   * @param mixed $arg - this argument have a different meaning depending on the value of the $mode parameter.
-   * @param array $ctorargs - arguments of custom class constructor when the $mode parameter is PDO::FETCH_CLASS.
-   * @return array
-   * @access public
-   */
-  public function couples($sql, array $data = [], $mode = \PDO::FETCH_ASSOC, $arg = null, array $ctorargs = null)
-  {
-    return $this->execute($sql, $data, self::COUPLES, $mode);
-  }
-  
-  /**
-   * Returns an instance of class ClickBlocks\DB\Reader that implements an iteration of rows from a query result set.
-   *
-   * @param string $sql - SQL query to execute.
-   * @param array $data - input parameters for the SQL execution.
-   * @param integer $mode - fetch mode for this SQL statement.
-   * @param mixed $arg - this argument have a different meaning depending on the value of the $style parameter.
-   * @param array $ctorargs - arguments of custom class constructor when the $style parameter is PDO::FETCH_CLASS.
-   * @return \ClickBlocks\DB\Reader
-   * @access public
-   */
-  public function query($sql, array $data = [], $mode = \PDO::FETCH_ASSOC, $arg = null, array $ctorargs = null)
-  {
-    return $this->execute($sql, $data, null, $mode);
-  }
-  
-  /**
-   * Returns the table list of the given database. If the database is not specified the current database is used.
-   *
-   * @param string $scheme - the schema (database name) of the tables.
-   * @return array
-   * @access public
-   */
-  public function getTableList($schema = null)
-  {
-    if (!$this->isConnected()) $this->connect();
-    if ($schema === null)
-    {
-      if ($this->getEngine() == 'OCI') $schema = $this->idsn['username'];
-      else $schema = $this->idsn['dbname'];
-    }
-    return $this->column($this->sql->tableList($schema));
-  }
-  
-  /**
-   * Returns the table metadata.
-   *
-   * @param string $table - the table name.
-   * @return array
-   * @access public
-   */
-  public function getTableInfo($table)
-  {
-    if (!$this->isConnected()) $this->connect();
-    return $this->sql->normalizeTableInfo($this->row($this->sql->tableInfo($table)));
-  }
-  
-  /**
-   * Returns metadata of the table columns.
-   *
-   * @param string $table
-   * @return array
-   * @access public
-   */
-  public function getColumnsInfo($table)
-  {
-    if (!$this->isConnected()) $this->connect();
-    return $this->sql->normalizeColumnsInfo($this->rows($this->sql->columnsInfo($table)));
-  }
-  
-  /**
-   * Inserts new record in the database table.
-   * Method returns the ID of the last inserted row or sequence value.
-   *
-   * @param string $table - the table name.
-   * @param mixed $data - the column metadata.
-   * @param array $options - contains additional parameters required by some DBMS:
-   * $options['updateOnKeyDuplicate'] - makes sense for MySQL DBMS. If this boolean parameter is specified and a row is inserted that would cause a duplicate value in a UNIQUE index or PRIMARY KEY, an UPDATE of the old row is performed.
-   * $options['sequenceName'] - name of the sequence object (required by PostgreSQL and Oracle DBMS).
-   * @return integer
-   * @access public
-   */
-  public function insert($table, $data, array $options = null)
-  {
-    $this->execute($this->__get('sql')->insert($table, $data, $options)->build($data), $data);
-    return $this->getLastInsertID(empty($options['sequenceName']) ? null : $options['sequenceName']);
-  }
-  
-  /**
-   * Updates existing rows in the database.
-   * Method returns the number of rows affected by this SQL statement.
-   *
-   * @param mixed $table - information about the database tables whose rows are to be updated.
-   * @param mixed $data - information about updating columns.
-   * @param mixed $where - information about conditions of the updating.
-   * @return integer
-   * @access public 
-   */
-  public function update($table, $data, $where = null)
-  {
-    $this->execute($this->__get('sql')->update($table, $data)->where($where)->build($where), $where);
-    return $this->getAffectedRows();
-  }
-  
-  /**
-   * Deletes existing rows in the database.
-   * Method returns the number of rows affected by this SQL statement.
-   *
-   * @param mixed $table - information about the database tables whose rows are to be deleted.
-   * @param mixed $where - information about conditions of the deleting.
-   * @return integer
-   * @access public 
-   */
-  public function delete($table, $where = null)
-  {
-    $this->execute($this->__get('sql')->delete($table)->where($where)->build($where), $where);
-    return $this->getAffectedRows();
-  }
-  
-  /**
-   * Prepares a SQL statement to execution.
-   *
-   * @param PDOStatement $st - the instance of SQL statement.
-   * @param string $sql - the SQL query to be executed.
-   * @param array $data - the data for the SQL query.
-   * @access protected
-   */
-  protected function prepare($st, $sql, array $data)
-  {
-    $bind = function($k, $v) use($st)
-    {
-      if (is_array($v)) 
-      {
-        list($value, $type) = each($v);
-        $st->bindValue($k, $value, $type);
-      }
-      else
-      {
-        $st->bindValue($k, $v, self::getPDOType($v));
-      }
-    };
-    if (is_numeric(key($data)))
-    {
-      $k = 1;
-      foreach ($data as $v) $bind($k++, $v);
-      return;
-    }
-    foreach ($data as $k => $v) $bind($k, $v);
-  }
-  
-  /**
-   * Combines SQL query string and data in one string.
-   *
-   * @param string $sql - the parametrized SQL query.
-   * @param array $data - the SQL data to be combined.
-   * @return string
-   * @access protected
-   */
-  protected function assemble($sql, array $data)
-  {
-    if (count($data) == 0) return $sql;
-    if (is_numeric(key($data)))
-    {
-      foreach ($data as $k => $v) 
-      {
-        $v = is_array($v) ? $v[0] : $v;
-        if (!is_numeric($v)) $v = $this->quote($v);
-        $sql = preg_replace('/\?/', $v, $sql, 1);
-      }
-      return $sql;
-    }
-    foreach ($data as $k => &$v) if (!is_numeric($v)) $v = $this->quote($v);
-    return strtr($sql, $data);
-  }
+   }
+   
 }
+
+?>

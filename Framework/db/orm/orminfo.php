@@ -14,7 +14,7 @@ class ORMInfo
    public function __construct(array $info)
    {
       $this->info = $info;
-      $this->config = \CB::getInstance()->getConfig();
+      $this->config = Core\Register::getInstance()->config;
    }
 
    public function getInfo()
@@ -34,7 +34,8 @@ class ORMInfo
 
    public function getDBNameByDBAlias($dbAlias)
    {
-      return ORM::getInstance()->getDB($dbAlias)->getDBName();
+      preg_match('/dbname=([^;]+);/i', $this->config[$dbAlias]['dsn'], $arr);
+      return $arr[1];
    }
 
    public function getTableAliasByTableName($dbAlias, $tableName)
@@ -79,7 +80,7 @@ class ORMInfo
 
    public function getFieldNamesByTableAlias($dbAlias, $tableAlias)
    {
-      return $this->info['aliases']['fields']['aliases'][$dbAlias][$tableAlias];
+      return array_keys($this->getFieldsInfoByTableAlias($dbAlias, $tableAlias));
    }
 
    public function getFieldNamesByTableName($dbAlias, $tableName)

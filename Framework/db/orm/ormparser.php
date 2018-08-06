@@ -8,30 +8,18 @@ class ORMParser
 {
    private $config = null;
 
-   /**
-    * 
-    * Конструктор класса 
-    */
    public function __construct()
    {
-      $this->config = \CB::getInstance()->getConfig();
+      $this->config = Core\Register::getInstance()->config;
    }
 
-   /**
-    * 
-    * 
-    *
-    * @param string $xmlfile
-    * @return array
-    * @throws \Exception 
-    */
    public function parseXML($xmlfile = null)
    {
-      if (!$xmlfile) $xmlfile = \CB::dir('engine') . '/db.xml';
-      if (!is_file($xmlfile)) throw new \Exception('file not found: '.$xmlfile);
+      if (!$xmlfile) $xmlfile = Core\IO::dir('engine') . '/db.xml';
+      if (!is_file($xmlfile)) throw new \Exception('file not found');
       $dom = new \DOMDocument('1.0', 'utf-8');
       $dom->load($xmlfile);
-      /*if (!$dom->schemaValidate(\CB::dir('framework').'/db/db.xsd'))
+      /*if (!$dom->validate())
       {
 
       }*/
@@ -80,15 +68,13 @@ class ORMParser
                $nodePhysicalField = $nodePhysicalFields[0];
                $tables[$tableAlias]['fields'][$fieldAlias] = array('name' => $fieldName,
                                                                    'type' => (string)$nodePhysicalField['Type'],
-                                                                   'phpType' => ORM::getInstance()->getDB($dbalias)->sql->getPHPType($nodePhysicalField['Type']),
-                                                                   'null' => (bool)$nodePhysicalField['Null'],
-                                                                   'unsigned' => (bool)$nodePhysicalField['Unsigned'],
+                                                                   'null' => (string)$nodePhysicalField['Null'],
+                                                                   'unsigned' => (string)$nodePhysicalField['Unsigned'],
                                                                    'length' => (string)$nodePhysicalField['Length'],
                                                                    'precision' => (string)$nodePhysicalField['Precision'],
                                                                    'collection' => (string)$nodePhysicalField['Collection'],
                                                                    'default' => (string)$nodePhysicalField['Default'],
-                                                                   'autoincrement' => (bool)$nodePhysicalField['Autoincrement'],
-                                                                   'navigators' => array());
+                                                                   'autoincrement' => (string)$nodePhysicalField['Autoincrement']);
                $this->getFieldAdditionalInfo($fieldAlias, $nodeLogicalField, $tables[$tableAlias]['fields'][$fieldAlias]);
             }
             foreach ($nodeLogicalTable->LogicProperties->Property as $nodeProperty)
@@ -118,7 +104,6 @@ class ORMParser
                {
                   $fldName = (string)$nodeField['Name'];
                   $tables[$tableAlias]['navigationFields'][$fieldName]['from']['fields'][$fldName] = $fldName;
-                  $tables[$tableAlias]['fields'][$fldName]['navigators'][$fieldName] = true;
                }
                $to = (string)$nodeProperty->To['Repository'];
                $to = explode('.', $to);
@@ -132,6 +117,9 @@ class ORMParser
                   $fldName = (string)$nodeField['Name'];
                   $tables[$tableAlias]['navigationFields'][$fieldName]['to']['fields'][$fldName] = $fldName;
                }
+               $tables[$tableAlias]['navigationFields'][$fieldName]['init']['name'] = '_init' . $fieldName;
+               $tables[$tableAlias]['navigationFields'][$fieldName]['init']['type'] = 'code';
+               $tables[$tableAlias]['navigationFields'][$fieldName]['init']['code'] = '$this->navigators[\'' . $fieldName . '\'] = new \ClickBlocks\DB\NavigationProperty($this, __CLASS__, \'' . addslashes($fieldName) . '\');';
             }
             $tables[$tableAlias]['pk'] = array();
             $tables[$tableAlias]['aliases'] = $fieldAliases;
@@ -149,14 +137,6 @@ class ORMParser
                $tables[$tableAlias]['pk'][$fieldAliases[$pkName]] = $fieldAliases[$pkName];
             }
          }
-         foreach ($dom->xpath('/Config/DataBase[@Name="' . $dbalias . '"]/ModelLogical/Routines/Procedure') as $nodeProcedure)
-         {
-           $dbs[$dbalias]['procedures'][] = array('name' => (string)$nodeProcedure['Name'], 'link' => (string)$nodeProcedure['Link'], 'table' => (string)$nodeProcedure['Table']);
-         }
-         foreach ($dom->xpath('/Config/DataBase[@Name="' . $dbalias . '"]/ModelLogical/Routines/Function') as $nodeFunction)
-         {
-           $dbs[$dbalias]['functions'][] = array('name' => (string)$nodeFunction['Name'], 'link' => (string)$nodeFunction['Link'], 'table' => (string)$nodeFunction['Table']);
-         }
          $dbs[$dbalias]['tables'] = $tables;
       }
       $info = array();
@@ -171,7 +151,6 @@ class ORMParser
          $className = (string)$nodeClass['Name'];
          $info['classes'][$className]['service'] = (string)$nodeClass['Service'];
          $info['classes'][$className]['orchestra'] = (string)$nodeClass['Orchestra'];
-         $info['classes'][$className]['collection'] = (string)$nodeClass['Collection'];
          $info['classes'][$className]['table']['fields'] = array();
          $info['classes'][$className]['table']['logicFields'] = array();
          $info['classes'][$className]['table']['navigationFields'] = array();
@@ -247,11 +226,7 @@ class ORMParser
                {
                   $info['classes'][$className]['table']['navigationFields'][$name[2]] = $class;
                   $toTable = $fields[$name[2]]['to']['table'];
-                  $toClass = $dom->xpath('/Config/Mapping/Classes/Class[@Name="' . ORMGenerator::getClassName($toTable) . '"]');
-                  if (empty($toClass[0]))
-                  {
-                    print_r(ORMGenerator::getClassName($toTable));exit;
-                  }
+                  $toClass = $dom->xpath('/Config/Mapping/Classes/Class[@Name="' . ucfirst($toTable) . '"]');
                   $info['model'][$name[0]]['tables'][$name[1]]['navigationFields'][$name[2]]['to']['bll'] = $info['namespace'] . '\\' . (string)$toClass[0]['Name'];
                   $info['model'][$name[0]]['tables'][$name[1]]['navigationFields'][$name[2]]['to']['service'] = $info['namespace'] . '\\' . (string)$toClass[0]['Service'];
                   $info['model'][$repository[0]]['tables'][$repository[1]]['navigationFields'][$name[2]] = $info['model'][$name[0]]['tables'][$name[1]]['navigationFields'][$name[2]];
@@ -271,7 +246,6 @@ class ORMParser
          $nodeTable = $dom->xpath('/Config/DataBase[@Name="' . $table[0] . '"]/ModelLogical/Tables/Table[@Name="' . $table[1] . '"]');
          $inherit = explode('.', (string)$nodeTable[0]['Inherit']);
          $class = $info['aliases']['classes']['tables'][$inherit[0]][$inherit[1]];
-         if ($class == null) throw new Core\Exception('Invalid inheritance set in DB.XML for table '.$table[1]);
          $nodes = $dom->xpath('/Config/Mapping/Classes/Class[@Name="' . $class . '"]');
          $this->getClassFields($info, $className, $nodes[0], $dom);
       }
@@ -343,13 +317,6 @@ class ORMParser
       }
    }
 
-   /**
-    * 
-    * 
-    *
-    * @param \SimpleXMLElement $dom
-    * @return array 
-    */
    private function getAliases(\SimpleXMLElement $dom)
    {
       $aliases = array();

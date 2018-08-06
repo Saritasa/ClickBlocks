@@ -3,155 +3,268 @@
 namespace ClickBlocks\DB;
 
 use ClickBlocks\Core,
+    ClickBlocks\IO,
     ClickBlocks\Exceptions;
 
 class ORMSynchronizer
-{  
-  public function sync($xmlfile = null)
-  {
-    $xml1 = \CB::dir('temp') . '/db.xml';
-    $xml2 = \CB::dir('engine') . '/db.xml';
-    $orm = ORM::getInstance();
-    if (!is_file($xml2))
-    {
-      $orm->generateXML('ClickBlocks\\DB');
-      return;
-    }
-    $orm->generateXML('ClickBlocks\\DB', $xml1);
-    $dom1 = new \DOMDocument('1.0', 'utf-8');
-    $dom1->preserveWhiteSpace = false;
-    $dom1->load($xml1);
-    $xpath1 = new \DOMXPath($dom1);
-    $dom2 = new \DOMDocument('1.0', 'utf-8');
-    $dom2->formatOutput = true;
-    $dom2->preserveWhiteSpace = false;
-    $dom2->load($xml2);
-    $xpath2 = new \DOMXPath($dom2);
-    foreach ($xpath2->query('//DataBase') as $db2)
-    {
-      $dbName = $db2->getAttribute('Name');
-      $db1 = $xpath1->query('//DataBase[@Name="' . $dbName . '"]');
-      if ($db1->length == 0) $dom2->documentElement->removeChild($db2);
-    }
-    foreach ($xpath1->query('//DataBase') as $n => $db1)
-    {
-      $dbName = $db1->getAttribute('Name');
-      $db2 = $xpath2->query('//DataBase[@Name="' . $dbName . '"]');
-      if ($db2->length == 0)
+{
+   const SYNC_MODE_IN = 1;
+   const SYNC_MODE_OUT = 2;
+   const SYNC_MODE_ALL = 3;
+
+   private $config = null;
+   private $orm = null;
+
+   public function __construct()
+   {
+      $this->config = Core\Register::getInstance()->config;
+      $this->orm = ORM::getInstance();
+   }
+   
+   public function synchronize($mode = self::SYNC_MODE_ALL, $xmlfile = null)
+   {
+      if (!$xmlfile) $xmlfile = $this->config->dir('engine') . '/db.xml';
+      if (!is_file($xmlfile)) throw new \Exception(err_msg('ERR_ORM_SYNC_1', array($xmlfile)));
+      
+      Core\Register::getInstance()->cache->delete(ORM::CACHE_DB_INFO_KEY);
+      
+      $parser = new ORMParser();
+      
+      $info = array();
+      $info['old'] = $parser->parseXML($xmlfile);
+      
+      $xmlfile = $this->config->dir('temp') . '/db.xml';
+      $this->orm->generateXML($info['old']['namespace'], $xmlfile);
+      $info['new'] = $parser->parseXML($xmlfile);
+      
+      $info['res'] = array();
+      $info['res']['namespace'] = $info['old']['namespace'];
+      $info['res']['model'] = array();
+      $info['res']['classes'] = array();
+      $info['res']['aliases'] = array();
+      
+      $dbs = array_keys(array_intersect_key($info['old']['model'], $info['new']['model']));
+      foreach ($dbs as $dbAlias)
       {
-        $dom2->documentElement->insertBefore($dom2->importNode($db1, true), $dom2->documentElement->childNodes->item($n));
-        continue;
+         $dbOld = $info['old']['model'][$dbAlias];
+         $dbNew = $info['new']['model'][$dbAlias];
+         if ($dbOld['name'] != $dbNew['name']) throw new \Exception('error');
+         $info['res']['model'][$dbAlias]['name'] = $dbOld['name'];
+         $info['res']['model'][$dbAlias]['tables'] = array(); 
+         $info['res']['aliases']['dbs']['aliases'][$dbAlias] = $dbOld['name'];
+         $info['res']['aliases']['dbs']['names'][$dbOld['name']] = $dbAlias; 
+         $tables = array_keys(array_intersect_key($dbOld['tables'], $dbNew['tables']));
+         foreach ($tables as $table)
+         {
+            $tbOld = $dbOld['tables'][$table];
+            $tbNew = $dbNew['tables'][$table];  
+            if ($tbOld['name'] != $tbNew['name']) throw new \Exception('error');
+            $class = $info['old']['aliases']['classes']['tables'][$dbAlias][$table];
+            $info['res']['model'][$dbAlias]['tables'][$table] = $tbOld; 
+            $info['res']['classes'][$table] = $info['old']['classes'][$class];
+            $info['res']['aliases']['tables']['aliases'][$dbAlias][$table] = $tbOld['name'];
+            $info['res']['aliases']['tables']['names'][$dbAlias][$tbOld['name']] = $table;
+            $info['res']['aliases']['classes']['names'][$class] = $info['old']['aliases']['classes']['names'][$class];
+            $info['res']['aliases']['classes']['tables'][$dbAlias][$table] = $class;
+            $fields = array_keys(array_intersect_key($tbOld['fields'], $tbNew['fields']));
+            foreach ($fields as $field)
+            {
+               $fldOld = $tbOld['fields'][$field];
+               $fldNew = $tbNew['fields'][$field];
+               if ($fldOld != $fldNew)               
+               { 
+                  if ($mode == self::SYNC_MODE_ALL) throw new \LogicException(err_msg('ERR_ORM_SYNC_2', array($dbAlias . '.' . $table . '.' . $field)));
+                  if ($mode == self::SYNC_MODE_IN)
+                  {
+                     $this->orm->getDB($dbAlias)->changeField($tbOld['name'], $fldOld['name'], $fldOld);    
+                  }
+                  else if ($mode == self::SYNC_MODE_OUT)
+                  {
+                     $info['res']['model'][$dbAlias]['tables'][$table]['fields'][$field] = $fldNew;
+                  }
+               } 
+            }
+            if ($mode & self::SYNC_MODE_IN)
+            {
+               $fields = array_keys(array_diff_key($tbOld['fields'], $tbNew['fields']));
+               foreach ($fields as $field)
+               {
+                  if (isset($tbNew['fields'][$tbOld['fields'][$field]['name']])) continue;
+                  $fld = $tbOld['fields'][$field];
+                  //$this->orm->getDB($dbAlias)->addField($tbOld['name'], $fld);
+                  $info['res']['model'][$dbAlias]['tables'][$table]['fields'][$field] = $fld; 
+                  $info['res']['classes'][$class]['table']['fields'][$field] = $info['old']['classes'][$class]['table']['fields'][$field];   
+               }  
+            }
+            if ($mode & self::SYNC_MODE_OUT)
+            {
+               $fields = array_keys(array_diff_key($tbNew['fields'], $tbOld['fields']));
+               foreach ($fields as $field)
+               {
+                  $fieldName = $tbNew['fields'][$field]['name'];
+                  if (isset($info['old']['aliases']['fields']['names'][$dbAlias][$table][$fieldName])) continue;
+                  $info['res']['model'][$dbAlias]['tables'][$table]['fields'][$field] = $tbNew['fields'][$field];
+                  $info['res']['model'][$dbAlias]['tables'][$table]['aliases'][$fieldName] = $tbNew['aliases'][$fieldName];
+                  $info['res']['classes'][$class]['table']['fields'][$field] = $info['new']['classes'][$class]['table']['fields'][$field];
+               }
+            }
+         }         
+         if ($mode & self::SYNC_MODE_IN)
+         {
+            $tables = array_keys(array_diff_key($dbOld['tables'], $dbNew['tables']));
+            foreach ($tables as $table)
+            {
+               if (isset($dbNew['tables'][$dbOld['tables'][$table]['name']])) continue;
+               $tb = $dbOld['tables'][$table];
+               //$this->orm->getDB($dbAlias)->createTable($tb['name'], $tb['fields'], $tb['pk'], $tb['engine'], $tb['charset']);
+               $class = $info['old']['aliases']['classes']['tables'][$dbAlias][$table];
+               $info['res']['model'][$dbAlias]['tables'][$table] = $tb;
+               $info['res']['classes'][$table] = $info['old']['classes'][$class];               
+               $info['res']['aliases']['tables']['aliases'][$dbAlias][$table] = $tb['name'];
+               $info['res']['aliases']['tables']['names'][$dbAlias][$tb['name']] = $table;
+               $info['res']['aliases']['classes']['names'][$class] = $info['old']['aliases']['classes']['names'][$class];
+               $info['res']['aliases']['classes']['tables'][$dbAlias][$table] = $class;
+            }
+         }
+         if ($mode & self::SYNC_MODE_OUT)
+         {
+            $tables = array_keys(array_diff_key($dbNew['tables'], $dbOld['tables']));
+            foreach ($tables as $table)
+            {
+               if (isset($info['old']['aliases']['tables']['names'][$dbAlias][$table][$dbNew['tables'][$table]['name']])) continue;
+               $tb = $dbNew['tables'][$table];               
+               $info['res']['model'][$dbAlias]['tables'][$table] = $tb;
+               $class = $info['new']['aliases']['classes']['tables'][$dbAlias][$table];
+               $info['res']['classes'][$table] = $info['new']['classes'][$class];
+               $info['res']['aliases']['tables']['aliases'][$dbAlias][$table] = $tb['name'];
+               $info['res']['aliases']['tables']['names'][$dbAlias][$tb['name']] = $table;
+               $info['res']['aliases']['classes']['names'][$class] = $info['new']['aliases']['classes']['names'][$class];
+               $info['res']['aliases']['classes']['tables'][$dbAlias][$table] = $class;
+            }
+         }  
+         ksort($info['res']['model'][$dbAlias]['tables']);                              
       }
-      $db2 = $db2->item(0);
-      $db2->replaceChild($dom2->importNode($db1->childNodes->item(0), true), $db2->childNodes->item(0));
-      $tables = $xpath2->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables')->item(0);
-      foreach ($xpath2->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table') as $tb2)
+      if ($mode & self::SYNC_MODE_IN)
       {
-        $repo = $tb2->getAttribute('Repository');
-        $tb1 = $xpath1->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table[@Repository="' . $repo . '"]');
-        if ($tb1->length == 0) $tables->removeChild($tb2);
+         $dbs = array_keys(array_intersect_key($info['old']['model'], $info['new']['model']));
       }
-      foreach ($xpath1->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table') as $n => $tb1)
+      if ($mode & self::SYNC_MODE_OUT)
       {
-        $repo = $tb1->getAttribute('Repository');
-        $tb2 = $xpath2->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table[@Repository="' . $repo . '"]');
-        if ($tb2->length == 0)
-        {
-          $tables->insertBefore($dom2->importNode($tb1, true), $tables->childNodes->item($n));
-          continue;
-        }
-        $tb2 = $tb2->item(0);
-        $fields = $xpath2->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table[@Repository="' . $repo . '"]/Fields')->item(0);
-        foreach ($xpath2->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table[@Repository="' . $repo . '"]/Fields/Field') as $field2)
-        {
-          $link = $field2->getAttribute('Link');
-          $field1 = $xpath1->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table[@Repository="' . $repo . '"]/Fields/Field[@Link="' . $link . '"]');
-          if ($field1->length == 0) $fields->removeChild($field2);
-        }
-        foreach ($xpath1->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table[@Repository="' . $repo . '"]/Fields/Field') as $n => $field1)
-        {
-          $link = $field1->getAttribute('Link');
-          $field2 = $xpath2->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table[@Repository="' . $repo . '"]/Fields/Field[@Link="' . $link . '"]');
-          if ($field2->length == 0)
-          {
-            $fields->insertBefore($dom2->importNode($field1, true), $fields->childNodes->item($n));
-            continue;
-          }
-        }
-        $tmp1 = $tmp2 = array();
-        foreach (array(1, 2) as $n)
-        {
-          foreach (${'xpath' . $n}->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table[@Repository="' . $repo . '"]/NavigationProperties/Property') as $property)
-          {
-            $html = $this->getInnerHTML($property);
-            ${'tmp' . $n}[substr($html, 0, strrpos($html, '<Select'))] = $property;
-          }
-        }
-        $properties = $xpath2->query('//DataBase[@Name="' . $dbName . '"]/ModelLogical/Tables/Table[@Repository="' . $repo . '"]/NavigationProperties')->item(0);
-        if ($tmp = array_diff_key($tmp1, $tmp2))
-        {
-          foreach ($tmp as $property)
-          {
-            $properties->appendChild($dom2->importNode($property, true));
-          }
-        }
-        if ($tmp = array_diff_key($tmp2, $tmp1))
-        {
-          foreach ($tmp as $property)
-          {
-            $properties->removeChild($property);
-          }
-        }
+         $dbs = array_keys(array_intersect_key($info['new']['model'], $info['old']['model']));
       }
-    }
-    $classes = $xpath2->query('//Mapping/Classes')->item(0);
-    foreach ($xpath2->query('//Mapping/Classes/Class') as $n => $class2)
-    {
-      $repo = $class2->getAttribute('Repository');
-      $class1 = $xpath1->query('//Mapping/Classes/Class[@Repository="' . $repo . '"]');
-      if ($class1->length == 0) $classes->removeChild($class2);
-    }
-    foreach ($xpath1->query('//Mapping/Classes/Class') as $n => $class1)
-    {
-      $repo = $class1->getAttribute('Repository');
-      $class2 = $xpath2->query('//Mapping/Classes/Class[@Repository="' . $repo . '"]');
-      if ($class2->length == 0)
+      ksort($info['res']['classes']);
+      
+      echo '<pre>' . print_r($info['res'], true) . '</pre>';
+      //echo '<pre>' . print_r($info['old'], true) . '</pre>';
+      //echo '<pre>' . print_r($info['new'], true) . '</pre>';  
+      $info = $info['res'];
+      
+      $dom = new \DOMDocument('1.0', 'utf-8');
+      $dom->formatOutput = true;      
+      $root = $dom->createElement('Config');      
+      $nodeMapping = $dom->createElement('Mapping');
+      $nodeMapping->setAttribute('Namespace', $info['namespace']); 
+      $nodeClasses = $dom->createElement('Classes');
+      foreach ($info['model'] as $alias => $db)
       {
-        $classes->insertBefore($dom2->importNode($class1, true), $classes->childNodes->item($n));
-        continue;
+         $dbName = $db['name'];
+         $scheme = $this->orm->getDB($alias)->getEngine();
+         $nodeDB = $dom->createElement('DataBase');
+         $nodeDB->setAttribute('DB', $dbName);
+         $nodeDB->setAttribute('Name', $alias);
+         $nodeDB->setAttribute('Driver', $scheme); 
+         $nodeModelPhysical = $dom->createElement('ModelPhysical');
+         $nodeModelLogical = $dom->createElement('ModelLogical');                  
+         $nodeTables = $dom->createElement('Tables');
+         $nodeLogicTables = $dom->createElement('Tables');   
+         foreach ($db['tables'] as $table => $data)
+         {
+            $nodeLogicTable = $dom->createElement('Table');
+            $nodeLogicTable->setAttribute('Name', $table);
+            $nodeLogicTable->setAttribute('Repository', $data['name']);         
+            $nodeFields = $dom->createElement('Fields');
+            $nodePhysicalFields = $dom->createElement('Fields'); 
+            $nodeLogicProperties = $dom->createElement('LogicProperties');
+            $nodeNavigations = $dom->createElement('NavigationProperties');
+            $nodeProperties = $dom->createElement('Properties');
+            // foreing keys are here            
+            $nodeTable = $dom->createElement('Table');
+            $nodeTable->setAttribute('Name', $data['name']);
+            $nodeTable->setAttribute('Engine', $data['engine']);
+            $nodeTable->setAttribute('Charset', $data['charset']);         
+            $nodePK = $dom->createElement('PrimaryKey');
+            foreach ($data['pk'] as $key)
+            {
+               $nodeRef = $dom->createElement('Ref');
+               $nodeRef->setAttribute('Name', $key);
+               $nodePK->appendChild($nodeRef); 
+            }
+            $nodeTable->appendChild($nodePK);         
+            $nodeClass = $dom->createElement('Class');
+            $className = $info['aliases']['classes']['tables'][$alias][$table];
+            $nodeClass->setAttribute('Name', $className);
+            $nodeClass->setAttribute('Repository', $this->getRepositoryName($alias, $table));
+            $nodeClass->setAttribute('Service', $info['classes'][$className]['service']);
+            $nodeClass->setAttribute('Orchestra', $info['classes'][$className]['orchestra']);  
+            foreach ($data['fields'] as $fieldAlias => $field)
+            {
+               $nodeField = $dom->createElement('Field');
+               $nodeField->setAttribute('Name', $field['name']);
+               $nodeField->setAttribute('Type', $field['type']);
+               if ((int)$field['null'] > 0) $nodeField->setAttribute('Null', $field['null']);
+               if ((int)$field['autoincrement'] > 0) $nodeField->setAttribute('Autoincrement', 1);
+               if ((int)$field['unsigned'] > 0) $nodeField->setAttribute('Unsigned', 1);
+               if ((int)$field['length'] > 0) $nodeField->setAttribute('Length', $field['length']);
+               if ((int)$field['precision'] > 0) $nodeField->setAttribute('Precision', $field['precision']);
+               if (strlen($field['collection'])) $nodeField->setAttribute('Collection', htmlspecialchars($field['collection']));
+               if (strlen($field['default'])) $nodeField->setAttribute('Default', htmlspecialchars($field['default']));
+               $nodePhysicalFields->appendChild($nodeField);                            
+               $nodeField = $dom->createElement('Field');
+               $nodeField->setAttribute('Name', $fieldAlias);
+               $nodeField->setAttribute('Link', $field['name']);
+               $nodeFields->appendChild($nodeField);            
+               $nodeProperty = $dom->createElement('Property');
+               $nodeProperty->setAttribute('Name', $this->getPropertyName($alias, $table, $fieldAlias));               
+               $nodeProperties->appendChild($nodeProperty);            
+            }            
+            $nodeTable->appendChild($nodePhysicalFields);             
+            $nodeLogicTable->appendChild($nodeFields);
+            $nodeLogicTable->appendChild($nodeNavigations);
+            $nodeLogicTable->appendChild($nodeLogicProperties);         
+            $nodeClass->appendChild($nodeProperties);         
+            $nodeTables->appendChild($nodeTable);
+            $nodeLogicTables->appendChild($nodeLogicTable);
+            $nodeClasses->appendChild($nodeClass);   
+         }
+         $nodeModelPhysical->appendChild($nodeTables);      
+         $nodeModelLogical->appendChild($nodeLogicTables);
+         $nodeDB->appendChild($nodeModelPhysical);
+         $nodeDB->appendChild($nodeModelLogical);
+         $root->appendChild($nodeDB);
       }
-      $repo = $class1->getAttribute('Repository');
-      $parts = explode('.', $repo);
-      $properties = $dom2->createElement('Properties');
-      foreach ($xpath2->query('//DataBase[@Name="' . $parts[0] . '"]/ModelLogical/Tables/Table[@Name="' . $parts[1] . '"]/NavigationProperties/Property') as $property)
-      {
-        $prop = $dom2->createElement('Property');
-        $prop->setAttribute('Name', $repo . '.' . $property->getAttribute('Name'));
-        $prop->setAttribute('Navigation', '1');
-        $properties->appendChild($prop);
-      }
-      foreach ($xpath2->query('//DataBase[@Name="' . $parts[0] . '"]/ModelLogical/Tables/Table[@Name="' . $parts[1] . '"]/Fields/Field') as $field)
-      {
-        $prop = $dom2->createElement('Property');
-        $prop->setAttribute('Name', $repo . '.' . $field->getAttribute('Name'));
-        $properties->appendChild($prop);
-      }
-      $class2->item(0)->replaceChild($properties, $xpath2->query('//Mapping/Classes/Class[@Repository="' . $repo . '"]/Properties')->item(0));
-    }
-    $dom2->save($xml2);
-  }
-  
-  protected function getInnerHTML(\DOMNode $node)
-  {
-    $html = '';
-    foreach ($node->childNodes as $child)
-    {
-      $dom = new \DOMDocument();
-      $dom->appendChild($dom->importNode($child, true));
-      $html .= trim($dom->saveHTML());
-    }
-    return $html;
-  }
+      $nodeMapping->appendChild($nodeClasses);
+      $root->appendChild($nodeMapping);   
+      $dom->appendChild($root);      
+      file_put_contents($this->config->root . '/res.xml', $dom->saveXML());
+      exit;
+   }
+   
+   private function getRepositoryName($alias, $table)
+   {
+      $db = ORM::getInstance()->getDB($alias);
+      if (strpos($alias, '.') !== false) $alias = $db->wrap($alias);
+      if (strpos($table, '.') !== false) $table = $db->wrap($table);
+      return $alias . '.' . $table;
+   }
+   
+   private function getPropertyName($alias, $table, $field)
+   {
+      $db = ORM::getInstance()->getDB($alias);      
+      if (strpos($alias, '.') !== false) $alias = $db->wrap($alias);
+      if (strpos($table, '.') !== false) $table = $db->wrap($table);
+      if (strpos($field, '.') !== false) $field = $db->wrap($field);
+      return $alias . '.' . $table . '.' . $field;
+   }
 }
 
 ?>

@@ -6,8 +6,8 @@ use ClickBlocks\Core,
 
 /**
 <?php echo $properties; ?>
- */ 
-class <?php echo $class; ?> extends \ClickBlocks\DB\DALTable 
+ */
+class <?php echo $class; ?> extends \ClickBlocks\DB\DALTable
 {
     public function __construct()
     {

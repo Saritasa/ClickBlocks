@@ -393,7 +393,7 @@ class Loader
          }
       }
       $this->cleanCache();
-      $this->fillCache(($path) ?: $this->reg->config->root);
+      $this->fillCache(($path) ?: dirname(__DIR__));
       $file = $this->classes[$class];
       if (!$file)
       {

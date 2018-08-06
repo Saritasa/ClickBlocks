@@ -152,7 +152,7 @@ class Loader
       $this->cacheKeyLock = 'cache_key_lock_' . md5($this->reg->config->root);
       $this->classes = $this->reg->cache->get($this->cacheKeyAutoload);
       if (!is_array($this->classes)) $this->classes = array();
-      if (count($this->classes) == 0) $this->fillCache();
+      if (count($this->classes) == 0) $this->fillCache($this->reg->config->autoloading['includePaths']);
       spl_autoload_register(array($this, 'autoLoadClass'));
       ini_set('unserialize_callback_func', 'spl_autoload_call');
    }
@@ -161,7 +161,6 @@ class Loader
       if ($this->cacheKeyLock && $this->reg->cache->get($this->cacheKeyLock) == getmypid()) {
          $this->reg->cache->delete($this->cacheKeyLock);
       }
-         
    }
 
    /**
@@ -224,52 +223,48 @@ class Loader
     *
     * Заполняет кэш информацией о путях к файлам с классами.
     *
-    * @param string $path
+    * @param string $paths
     * @access public
     */
-   public function fillCache($path = null)
+   public function fillCache($paths = null)
    {
-      $excludedPathes = array_filter(preg_split('#,\s*#', $this->reg->config->autoloading['excludedPathes']));
-      $isRoot = ($path === null || $path == $this->reg->config->root);
+      $includePaths = array_filter(preg_split('#,\s*#', $paths));
+      $isRoot = count($includePaths) > 1;
       if ($isRoot) 
       {
          if ($this->reg->cache->get($this->cacheKeyLock)) die('Cache is being generated in another thread. Please wait.');
          $this->reg->cache->set($this->cacheKeyLock, getmypid(), CACHE_EXPIRE_MINUTE*3);
       }
-      $path = (!strlen($path)) ? $this->reg->config->root : $path;
-      foreach (scandir($path) as $item)
+      foreach ($includePaths as $includePath)
       {
-         if ($excludedPathes) {
-             foreach ($excludedPathes as $excludedPath){
-                 if (strpos(str_replace('\\', '/',  $item), $excludedPath) !== false) {
-                     continue 2;
-                 }
-             }
-         }
+          $path = $isRoot ? $this->reg->config->root .DIRECTORY_SEPARATOR. $includePath : $includePath;
 
-         if ($item == '.' || $item == '..' || $item == '.git' || $item == '.svn' || $item == '.hg') continue;
-         $file = $path . DIRECTORY_SEPARATOR . $item;
-         if (in_array($file, self::$excludedDirectories)) continue;
-         if (is_file($file) && preg_match($this->phpFileName, $item))
-         {
-            $tokens = token_get_all('<?php ' . file_get_contents($file) . ' ?>');
-            $namespace = null;
-            foreach ($tokens as $n => $token)
-            {
-               if ($token[0] == T_NAMESPACE) 
-               {
-                 $namespace = $this->getNamespace($tokens, $n);
-                 if ($namespace != '\\') $namespace .= '\\';
-               }
-               else if ($token[0] == T_CLASS || $token[0] == T_INTERFACE || (defined('T_TRAIT') && $token[0] == T_TRAIT))
-               {
-                  $classes = $this->getClasses();
-                  $classes[strtolower(($namespace ?: '\\') . $this->getClassName($tokens, $n))] = $file;
-                  $this->setClasses($classes);
-               }
-            }
-         }
-         else if (is_dir($file)) $this->fillCache($file);
+          foreach (scandir($path) as $item)
+          {
+             if ($item == '.' || $item == '..' || $item == '.git' || $item == '.svn' || $item == '.hg') continue;
+             $file = $path . DIRECTORY_SEPARATOR . $item;
+             if (in_array($file, self::$excludedDirectories)) continue;
+             if (is_file($file) && preg_match($this->phpFileName, $item))
+             {
+                $tokens = token_get_all('<?php ' . file_get_contents($file) . ' ?>');
+                $namespace = null;
+                foreach ($tokens as $n => $token)
+                {
+                   if ($token[0] == T_NAMESPACE)
+                   {
+                     $namespace = $this->getNamespace($tokens, $n);
+                     if ($namespace != '\\') $namespace .= '\\';
+                   }
+                   else if ($token[0] == T_CLASS || $token[0] == T_INTERFACE || (defined('T_TRAIT') && $token[0] == T_TRAIT))
+                   {
+                      $classes = $this->getClasses();
+                      $classes[strtolower(($namespace ?: '\\') . $this->getClassName($tokens, $n))] = $file;
+                      $this->setClasses($classes);
+                   }
+                }
+             }
+             else if (is_dir($file)) $this->fillCache($file);
+          }
       }
       if ($isRoot) $this->reg->cache->delete($this->cacheKeyLock);
    }
@@ -393,7 +388,7 @@ class Loader
          }
       }
       $this->cleanCache();
-      $this->fillCache(($path) ?: dirname(__DIR__));
+      $this->fillCache(($path) ?: $this->reg->config->autoloading['includePaths']);
       $file = $this->classes[$class];
       if (!$file)
       {

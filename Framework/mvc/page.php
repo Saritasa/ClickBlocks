@@ -41,20 +41,6 @@ use ClickBlocks\Web\CSS;
 use ClickBlocks\Web\HTML;
 use ClickBlocks\Web\JS;
 
-interface IPage extends \ArrayAccess, \Countable
-{
-   public function getUniqueID();
-   public function access();
-   public function preparse();
-   public function parse();
-   public function init();
-   public function load();
-   public function unload();
-   public function perform();
-   public function show();
-   public function render();
-}
-
 /**
  * The parent class implements the controller's logic for site pages according to the MVC pattern.
  *

@@ -28,35 +28,11 @@
 
 namespace ClickBocks\Core;
 
-class Event implements IEvent
+interface IEvent
 {
-   protected $delegates = array();
-
-   public function __construct(IDelegate $delegate)
-   {
-      $this->addDelegate($delegate);
-   }
-
-   public function add(IDelegate $delegate)
-   {
-      $this->delegates[(string)$delegate] = $delegate;
-   }
-
-   public function delete(IDelegate $delegate)
-   {
-      unset($this->delegates[(string)$delegate]);
-   }
-
-   public function __invoke()
-   {
-      return $this->call(func_get_args());
-   }
-
-   public function call(array $params)
-   {
-      foreach ($this->delegates as $delegate) $res = $delegate->call($params);
-      return $res;
-   }
+   public function __construct(IDelegate $delegate);
+   public function __invoke();
+   public function add(IDelegate $delegate);
+   public function delete(IDelegate $delegate);
+   public function call(array $params);
 }
-
-?>

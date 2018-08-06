@@ -28,23 +28,6 @@
 
 namespace ClickBlocks\Core;
 
-/**
- * Interface for delegates.
- *
- * Интерфейс для делегатов.
- *
- * @category  Core
- * @package   Core
- * @copyright 2007-2010 SARITASA LLC <info@saritasa.com>
- * @version   Release: 1.0.0
- */
-interface IDelegate
-{
-   public function __construct($callback);
-   public function __invoke();
-   public function call(array $params);
-}
-
 class Delegate implements IDelegate
 {
    private $callback = null;

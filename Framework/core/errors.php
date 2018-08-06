@@ -117,5 +117,3 @@ define('ERR_DOM_1', 'DOM Element with ID = "[{var}]" not found');
 // Translate
 define('ERR_TLT_1', 'Rule [[{var}]] contains unavailable constructions. A rule may contains only following constructions: "||", "&&", ",", "(", ")", "-", "+", "preg_match", digit characters and template variables');
 define('ERR_TLT_2', 'Rule [[{var}]] contains unspecified template variable "[{var}]"');
-
-?>

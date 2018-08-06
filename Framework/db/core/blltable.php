@@ -5,11 +5,6 @@ namespace ClickBlocks\DB;
 use ClickBlocks\Core,
     ClickBlocks\Exceptions;
 
-interface IBLLTable extends IDALTable
-{
-
-}
-
 class BLLTable implements IBLLTable, \Serializable
 {
    const BUILD_BY_DB = 0;

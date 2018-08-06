@@ -241,13 +241,13 @@ class Loader
       {
          if ($excludedPathes) {
              foreach ($excludedPathes as $excludedPath){
-                 if (strpos(str_replace('\\', '/', $path.DIRECTORY_SEPARATOR.$item), $excludedPath) !== false) {
+                 if (strpos(str_replace('\\', '/',  $item), $excludedPath) !== false) {
                      continue 2;
                  }
              }
          }
 
-         if ($item == '.' || $item == '..' || $item == '.svn' || $item == '.hg') continue;
+         if ($item == '.' || $item == '..' || $item == '.git' || $item == '.svn' || $item == '.hg') continue;
          $file = $path . DIRECTORY_SEPARATOR . $item;
          if (in_array($file, self::$excludedDirectories)) continue;
          if (is_file($file) && preg_match($this->phpFileName, $item))

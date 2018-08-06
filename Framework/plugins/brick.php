@@ -23,5 +23,3 @@ class Brick extends WebForms\Panel
       $this->properties['plugin'] = null;
    }
 }
-
-?>

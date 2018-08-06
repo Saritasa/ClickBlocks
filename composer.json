@@ -25,7 +25,8 @@
   },
   "extra": {
     "branch-alias": {
-      "dev-master": "1.0.x-dev",
+      "dev-master": "1.x-dev",
+      "dev-mobile-medic": "2.x-dev"
     }
   }
 }

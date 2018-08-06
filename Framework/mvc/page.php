@@ -33,6 +33,8 @@ use ClickBlocks\Core,
  *
  * @version 1.0.0
  * @package cb.mvc
+ * @property-read Core\Template $tpl
+ * @property-read POM\Body $body
  */
 class Page
 {
@@ -49,7 +51,7 @@ class Page
    * @static
    */
   public static $cache = null;
-  
+
   /**
    * Default cache group.
    *
@@ -58,7 +60,7 @@ class Page
    * @static
    */
   public static $cacheGroup = 'pages';
-  
+
   /**
    * Default cache expire.
    *
@@ -67,7 +69,7 @@ class Page
    * @static
    */
   public static $cacheExpire = 0;
-  
+
   /**
    * Contains a page object, whose workflow is performed.
    *
@@ -76,7 +78,7 @@ class Page
    * @static
    */
   public static $current = null;
-  
+
   /**
    * Represents the view of a page.
    *
@@ -84,7 +86,7 @@ class Page
    * @access public
    */
   public $view = null;
-  
+
   /**
    * The URL for redirect if a page is not accessible.
    *
@@ -92,7 +94,7 @@ class Page
    * @access public
    */
   public $noAccessURL = null;
-  
+
   /**
    * The URL for redirect if the user session is expired.
    *
@@ -100,7 +102,7 @@ class Page
    * @access public
    */
   public $noSessionURL = null;
-  
+
   /**
    * The time (in seconds) of expiration cache of a page.
    *
@@ -108,7 +110,7 @@ class Page
    * @access public
    */
   protected $expire = 0;
-  
+
   /**
    * This list of regular expressions that restrict the area of permitted delegates.
    *
@@ -117,8 +119,8 @@ class Page
    */
   protected $ajaxPermissions = ['permitted' => ['/^ClickBlocks\\\\(MVC|Web\\\\POM).*$/i'],
                                 'forbidden' => ['/^ClickBlocks\\\\Web\\\\POM\\\\[^\\\\]*\[\d*\]->(__set|__get|__unset|__isset|prop)$/i']];
-  
-  /** 
+
+  /**
    * The sequence of class methods that determines the class workflow.
    * The sequence should consist of two parts: for the first visit to the page (GET non-Ajax request) and for other visits.
    *
@@ -127,15 +129,15 @@ class Page
    */
   protected $sequenceMethods = ['first' => ['parse', 'init', 'load', 'render', 'unload'],
                                 'after' => ['assign', 'load', 'process', 'unload']];
-       
+
   /**
    * The unique page identifier.
    *
    * @var string $UID
    * @access private
-   */   
+   */
   private $UID = null;
-  
+
   /**
    * Cache object for storing HTML of the rendered page.
    *
@@ -143,7 +145,7 @@ class Page
    * @access private
    */
   private $storage = null;
-  
+
   /**
    * The instance of Body control.
    *
@@ -151,7 +153,7 @@ class Page
    * @access private
    */
   private $body = null;
-  
+
   /**
    * The instance of the Body template engine.
    *
@@ -159,9 +161,9 @@ class Page
    * @access private
    */
   private $tpl = null;
-  
+
   /**
-   * Constructor. Creates unique identifier of the page based on page template, page class and site unique ID. 
+   * Constructor. Creates unique identifier of the page based on page template, page class and site unique ID.
    * This UID can be used for caching of page rendering.
    *
    * @param string $template - template string or path to a template file.
@@ -173,9 +175,9 @@ class Page
     $this->view = new POM\View($template);
     $this->storage = static::$cache ? static::$cache : \CB::getInstance()->getCache();
   }
-  
+
   /**
-   * Used for overloading the dynamic properties "body" and "tpl" that 
+   * Used for overloading the dynamic properties "body" and "tpl" that
    * represent the Body control and its template engine object respectively.
    *
    * @param string $param - the property name.
@@ -185,10 +187,10 @@ class Page
   public function __get($param)
   {
     if ($param == 'body') return $this->body ? $this->body : $this->body = $this->view->get('body');
-	if ($param == 'tpl') return $this->tpl ? $this->tpl : $this->tpl = $this->__get('body')->tpl;
-	return new Core\Exception($this, 'ERR_PAGE_3', get_class($this) . '::$' . $param);
+  	if ($param == 'tpl') return $this->tpl ? $this->tpl : $this->tpl = $this->__get('body')->tpl;
+	  return new Core\Exception($this, 'ERR_PAGE_3', get_class($this) . '::$' . $param);
   }
-  
+
   /**
    * Returns the unique page ID.
    *
@@ -199,7 +201,7 @@ class Page
   {
     return $this->UID;
   }
-  
+
   /**
    * Sets the unique page ID.
    *
@@ -210,7 +212,7 @@ class Page
   {
     $this->UID = $UID;
   }
-  
+
   /**
    * Returns the page cache object.
    *
@@ -221,7 +223,7 @@ class Page
   {
     return $this->storage;
   }
-  
+
   /**
    * Returns FALSE if the page is not cached or its cache is expired. Otherwise, it returns TRUE.
    *
@@ -232,7 +234,7 @@ class Page
   {
     return ($this->expire ?: static::$cacheExpire) ? $this->storage->isExpired($this->UID) : true;
   }
-  
+
   /**
    * Recovers page HTML from cache.
    * It returns NULL if the page is not cached or its cache is expired.
@@ -244,10 +246,10 @@ class Page
   {
     return $this->storage->get($this->UID);
   }
-  
+
   /**
    * Returns list of workflow methods.
-   * if $first is TRUE, the list of methods for the first visit to the page is returned, 
+   * if $first is TRUE, the list of methods for the first visit to the page is returned,
    * otherwise the method returns the list of methods for the next visits.
    *
    * @param boolean $first - determines type of sequence of methods.
@@ -295,7 +297,7 @@ class Page
   {
     $this->view->parse();
   }
-  
+
   /**
    * Initializes the page view.
    * This method is performed once during the first visit to the page.
@@ -317,7 +319,7 @@ class Page
   {
     $this->view->invoke('load');
   }
-  
+
   /**
    * Renders the page HTML.
    *
@@ -348,12 +350,13 @@ class Page
     }
   }
 
-    /**
-     * Performs the Ajax request.
-     *
-     * @access public
-     * @throws Core\Exception
-     */
+  /**
+   * Performs the Ajax request.
+   *
+   * @access public
+   * @throws Core\Exception
+   * @throws \ReflectionException
+   */
   public function process()
   {
     $data = Net\Request::getInstance()->data;
@@ -369,7 +372,7 @@ class Page
     }
     $this->view->process($response);
   }
-  
+
   /**
    * Completes the page workflow.
    * This method is executed each time you visit the page.

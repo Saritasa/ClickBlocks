@@ -11,13 +11,12 @@
   ],
   "autoload": {
     "classmap": [
-      "Framework/", "Configurator/src", "Configurator/modules"
+      "Framework/"
     ],
     "exclude-from-classmap": [
       "Framework/_tests/"
     ]
   },
-  "bin": ["Configurator/cfg"],
   "scripts": {
     "post-package-install": ""
   },

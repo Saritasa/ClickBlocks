@@ -1012,8 +1012,9 @@ final class CB implements \ArrayAccess
       throw new \Exception(self::error($this, 'ERR_GENERAL_1', $class));
     }
     if ($this->find($cs)) return true;
-    if (!$auto) return false;
-    throw new \Exception(self::error($this, 'ERR_GENERAL_1', $class));
+    if (!$auto) {
+      throw new \Exception(self::error($this, 'ERR_GENERAL_1', $class));
+    }
   }
   
   /**

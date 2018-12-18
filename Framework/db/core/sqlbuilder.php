@@ -932,4 +932,26 @@ abstract class SQLBuilder
     $data[$param] = $value;
     return $param;
   }
+  
+  public function joinWhere(&$where, $del)
+  {
+    if (is_array($where))
+    {
+      $p = array(); $rows = $where;
+      foreach ($rows as $k => $v)
+      {
+        if (is_array($v)) $p[] = '(' . $this->joinWhere($v, ($del == 'AND') ? 'OR' : 'AND') . ')';
+        else if (is_numeric($k)) $p[] = $v;
+        else if (!$this->isSQL($v)) $p[] = $this->wrap($k) . ' = :' . $k;
+        else
+        {
+          $p[] = $this->wrap($k) . ' = ' . $v;
+          unset($where[$k]);
+        }
+      }
+      $w = join(' ' . $del . ' ', $p);
+    }
+    else if (is_string($where)) $w = $where;
+    return $w;
+  }
 }

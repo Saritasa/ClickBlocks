@@ -478,4 +478,39 @@ class MySQLBuilder extends SQLBuilder
     if (!empty($insert['options']['updateOnKeyDuplicate'])) $sql .= ' ON DUPLICATE KEY UPDATE ' . $this->updateExpression($columns, $data);
     return $sql;
   }
+  
+  public function joinWhere(&$where, $del)
+  {
+    if (is_array($where))
+    {
+      $p = $tmp = array(); $rows = $where;
+      foreach ($rows as $k => $v)
+      {
+        if (is_array($v))
+        {
+          $p[] = '(' . $this->joinWhere($v, ($del == 'AND') ? 'OR' : 'AND') . ')';
+          $tmp[] = $v;
+        }
+        else if (is_numeric($k))
+        {
+          $p[] = $v;
+          $tmp[] = $v;
+        }
+        else if (!$this->isSQL($v))
+        {
+          $tmp[] = $v;
+          $p[] = $this->wrap($k) . ((is_numeric($v) || $v == '') ? ' = ?' : ' = N?');
+        }
+        else
+        {
+          $p[] = $this->wrap($k) . ' = ' . $v;
+          unset($where[$k]);
+        }
+      }
+      $w = join(' ' . $del . ' ', $p);
+      $where = $tmp;
+    }
+    else if (is_string($where)) $w = $where;
+    return $w;
+  }
 }

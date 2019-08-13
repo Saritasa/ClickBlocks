@@ -6,40 +6,39 @@ require_once(__DIR__ . '/module.php');
 
 final class Configurator
 {
-  const CORE_PATH = '/Framework/clickblocks.php';
-
   private static $instance = null;
   private static $configs = [];
   private static $modules = [];
   private static $cb = null;
-  
+  private static $clickBlocks;
+
   private function __construct(){}
-  
+
   public static function isAjaxRequest()
   {
     return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest';
   }
-  
+
   public static function isFirstRequest()
   {
     return self::isCLI() || $_SERVER['REQUEST_METHOD'] == 'GET' && !self::isAjaxRequest();
   }
-  
+
   public static function isCLI()
   {
     return PHP_SAPI === 'cli';
   }
-  
+
   public static function getCB()
   {
     return self::$cb;
   }
-  
+
   public static function getConfigs()
   {
     return self::$configs;
   }
-  
+
   public static function setConfigs(array $configs, $merge = true)
   {
     if (!$merge) self::$configs = [];
@@ -49,7 +48,8 @@ final class Configurator
   public static function init()
   {
     set_time_limit(0);
-    $_SERVER['DOCUMENT_ROOT'] = realpath (__DIR__ . '/../../../../..');
+    $_SERVER['DOCUMENT_ROOT'] = realpath(__DIR__ . '/../../../../..');
+    static::$clickBlocks = realpath(__DIR__ . '/../../Framework/clickblocks.php');
     $list = __DIR__ . '/../modules/list.txt';
     if (file_exists($list))
     {
@@ -64,7 +64,7 @@ final class Configurator
           {
             require_once($php);
             $class = 'ClickBlocks\Configurator\\' . $name;
-            if (class_exists($class)) self::$modules[$name] = new $class(); 
+            if (class_exists($class)) self::$modules[$name] = new $class();
           }
         }
       }
@@ -73,7 +73,7 @@ final class Configurator
     if (self::isFirstRequest())
     {
       $errors = [];
-      if (!file_exists($_SERVER['DOCUMENT_ROOT'] . self::CORE_PATH)) $errors[] = 'File ' . self::CORE_PATH . ' is not found.';
+      if (!file_exists(static::$clickBlocks)) $errors[] = 'File ' . static::$clickBlocks . ' is not found.';
       if (count($errors)) self::show(['errors' => $errors]);
       if (!self::isCLI())
       {
@@ -84,9 +84,9 @@ final class Configurator
       }
     }
     if (!self::$instance) self::$instance = new self();
-    return self::$instance;            
+    return self::$instance;
   }
-  
+
   public function process()
   {
     if (!self::isAjaxRequest() && !self::isCLI()) return;
@@ -99,7 +99,7 @@ final class Configurator
     }
     self::$modules[$module]->process($command, $args);
   }
-  
+
   private static function getCommandHelp()
   {
     $help = <<<'HELP'
@@ -117,7 +117,7 @@ HELP;
     foreach (self::$modules as $name => $module) $help .= PHP_EOL . 'Module: [' . $name . ']' . PHP_EOL . $module->getcommandHelp();
     return $help;
   }
-  
+
   private static function parseParameters()
   {
     if (self::isCLI())
@@ -135,7 +135,7 @@ HELP;
           $args = [];
           for ($i = 3, $key = ''; $i < $argc; $i++)
           {
-            if (substr($argv[$i], 0, 2) == '--') 
+            if (substr($argv[$i], 0, 2) == '--')
             {
               $key = substr($argv[$i], 2);
               $args[$key] = '';
@@ -158,15 +158,15 @@ HELP;
     }
     return [$module, $command, $args];
   }
-  
+
   private static function connect()
   {
-    require_once($_SERVER['DOCUMENT_ROOT'] . self::CORE_PATH);
+    require_once(static::$clickBlocks);
     self::$cb = \CB::init();
     \CB::errorHandling(false);
     foreach (self::$configs as $file => $editable) self::$cb->setConfig($file);
   }
-  
+
   private static function show(array $vars)
   {
     extract($vars);

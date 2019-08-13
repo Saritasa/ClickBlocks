@@ -49,7 +49,7 @@ final class Configurator
   public static function init()
   {
     set_time_limit(0);
-    $_SERVER['DOCUMENT_ROOT'] = realpath (__DIR__ . '/../..');
+    $_SERVER['DOCUMENT_ROOT'] = realpath (__DIR__ . '/../../../../..');
     $list = __DIR__ . '/../modules/list.txt';
     if (file_exists($list))
     {

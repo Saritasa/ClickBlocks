@@ -259,7 +259,7 @@ class Navigator extends WebControl
       if ($row['type'] == 'open' || $row['type'] == 'complete')
       {
          $html = '<' . $tag;
-         if (count($row['attributes']))
+         if (is_array($row['attributes']) && count($row['attributes']))
          {
             $tmp = array();
             foreach ($row['attributes'] as $k => $v) $tmp[] = $k . '="' . $v . '"';

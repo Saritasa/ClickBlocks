@@ -240,9 +240,9 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
       {
          foreach ($info['from']['fields'] as $alias => $data)
          {
-            $toField = each($info['to']['fields']);
+            $toField = current($info['to']['fields']);
             $params[] = $this->bll->{$alias};
-            $w[] = 't1.' . $db->wrap($toField[1]['name']) . ' = ?';
+            $w[] = 't1.' . $db->wrap($toField['name']) . ' = ?';
          }
          if (!$info['to']['inherit'])
          {
@@ -254,8 +254,8 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
             $inheritJoins = array();
             foreach ($info['from']['pk'] as $alias => $data)
             {
-               $toField = each($info['to']['inherit']['fields']);
-               $inheritJoins[] = 't1.' . $db->wrap($data['name']) . ' = t2.' . $db->wrap($toField[1]['name']);
+               $toField = current($info['to']['inherit']['fields']);
+               $inheritJoins[] = 't1.' . $db->wrap($data['name']) . ' = t2.' . $db->wrap($toField['name']);
             }
             $sql = 'SELECT t2.*, t1.* FROM ' . $fromDBName . '.' . $db->wrap($info['from']['table']) . ' AS t1
                     INNER JOIN ' . $toInheritDB . '.' . $db->wrap($info['to']['inherit']['table']) . ' AS t2 ON ' . implode(' AND ', $inheritJoins) . '
@@ -267,9 +267,9 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
          $joins = array();
          foreach ($info['from']['fields'] as $alias => $data)
          {
-            $toField = each($info['to']['fields']);
+            $toField = current($info['to']['fields']);
             $params[] = $this->bll->{$alias};
-            $joins[] = 't2.' . $db->wrap($data['name']) . ' = t1.' . $db->wrap($toField[1]['name']);
+            $joins[] = 't2.' . $db->wrap($data['name']) . ' = t1.' . $db->wrap($toField['name']);
             $w[] = 't2.' . $db->wrap($data['name']) . ' = ?';
          }
          if (!$info['to']['inherit'])
@@ -291,8 +291,8 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
                $inheritJoins = array();
                foreach ($info['to']['fields'] as $alias => $data)
                {
-                  $toField = each($info['to']['inherit']['fields']);
-                  $inheritJoins[] = 't1.' . $db->wrap($data['name']) . ' = t3.' . $db->wrap($toField[1]['name']);
+                  $toField = current($info['to']['inherit']['fields']);
+                  $inheritJoins[] = 't1.' . $db->wrap($data['name']) . ' = t3.' . $db->wrap($toField['name']);
                }
                $sql = 'SELECT t3.*, t1.* FROM ' . $toDBName . '.' . $db->wrap($info['to']['table']) . ' AS t1
                        INNER JOIN ' . $toInheritDB . '.' . $db->wrap($info['to']['inherit']['table']) . ' AS t3 ON ' . implode(' AND ', $inheritJoins) . '

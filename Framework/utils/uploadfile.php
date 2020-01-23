@@ -79,7 +79,7 @@ class UploadFile
                                  'id' => null,
                                  'unique' => false,
                                  'destination' => null,
-                                 'mode' => UPLOAD_MODE_DEFAULT);
+                                 'mode' => self::UPLOAD_MODE_DEFAULT);
 
    /**
     * The array of thumbnails information.

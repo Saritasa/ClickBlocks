@@ -21,7 +21,7 @@
     "post-package-install": ""
   },
   "require": {
-    "php": "^5.5 || ^7.0"
+    "php": "^7.2"
   },
   "extra": {
     "branch-alias": {

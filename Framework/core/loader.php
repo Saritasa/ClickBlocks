@@ -69,6 +69,13 @@ class Loader
     * @access protected
     */
    protected $classes = null;
+    
+    /**
+     * Temporary storage for fill cache function.
+     * 
+     * @var array
+     */
+    protected $fillCacheClasses = [];
 
    /**
     * The instance of Register class.
@@ -123,8 +130,6 @@ class Loader
    public $phpFileName = '/^.*\.php$/i';
    
    public $onPreload = null;
-   
-   protected $cacheKeyLock;
 
    /**
     * Clones an object of this class. The private method '__clone' doesn't allow to clone an instance of the class.
@@ -149,18 +154,11 @@ class Loader
    {
       $this->reg = Register::getInstance();
       $this->cacheKeyAutoload = 'cache_key_autoload_' . md5($this->reg->config->root);
-      $this->cacheKeyLock = 'cache_key_lock_' . md5($this->reg->config->root);
       $this->classes = $this->reg->cache->get($this->cacheKeyAutoload);
       if (!is_array($this->classes)) $this->classes = array();
       if (count($this->classes) == 0) $this->fillCache($this->reg->config->autoloading['includePaths']);
       spl_autoload_register(array($this, 'autoLoadClass'));
       ini_set('unserialize_callback_func', 'spl_autoload_call');
-   }
-   
-   public function __destruct() {
-      if ($this->cacheKeyLock && $this->reg->cache->get($this->cacheKeyLock) == getmypid()) {
-         $this->reg->cache->delete($this->cacheKeyLock);
-      }
    }
 
    /**
@@ -224,16 +222,18 @@ class Loader
     * Заполняет кэш информацией о путях к файлам с классами.
     *
     * @param string $paths
+    * @param bool $isRoot Is first call of recursive scan directories.
+    * @param bool $skipSetClasses Skip to save found classes to cache.
+    * 
     * @access public
     */
-   public function fillCache($paths = null)
+   public function fillCache($paths = null, bool $isRoot = true, bool $skipSetClasses = false)
    {
       $includePaths = array_filter(preg_split('#,\s*#', $paths));
-      $isRoot = count($includePaths) > 1;
       if ($isRoot) 
       {
-         if ($this->reg->cache->get($this->cacheKeyLock)) die('Cache is being generated in another thread. Please wait.');
-         $this->reg->cache->set($this->cacheKeyLock, getmypid(), CACHE_EXPIRE_MINUTE*3);
+         $this->fillCacheClasses = [];
+         sleep(10);
       }
       foreach ($includePaths as $includePath)
       {
@@ -257,16 +257,17 @@ class Loader
                    }
                    else if ($token[0] == T_CLASS || $token[0] == T_INTERFACE || (defined('T_TRAIT') && $token[0] == T_TRAIT))
                    {
-                      $classes = $this->getClasses();
-                      $classes[strtolower(($namespace ?: '\\') . $this->getClassName($tokens, $n))] = $file;
-                      $this->setClasses($classes);
+                       $this->fillCacheClasses[strtolower(($namespace ?: '\\') . $this->getClassName($tokens, $n))] = $file;
                    }
                 }
              }
-             else if (is_dir($file)) $this->fillCache($file);
+             else if (is_dir($file)) $this->fillCache($file, false);
           }
       }
-      if ($isRoot) $this->reg->cache->delete($this->cacheKeyLock);
+      if ($isRoot && !$skipSetClasses) {
+          $this->setClasses($this->fillCacheClasses);
+          $this->fillCacheClasses = [];
+      }
    }
 
    /**
@@ -387,8 +388,12 @@ class Loader
             if (class_exists($class, false) || interface_exists($class, false) || (function_exists('trait_exists') && trait_exists($class, false))) return true;
          }
       }
-      $this->cleanCache();
-      $this->fillCache(($path) ?: $this->reg->config->autoloading['includePaths']);
+      $this->fillCache(($path) ?: $this->reg->config->autoloading['includePaths'], true, true);
+      $classesInCache = $this->reg->cache->get($this->cacheKeyAutoload);
+      if (!array_key_exists($class, $classesInCache) && array_key_exists($class, $this->fillCacheClasses)) {
+          $this->setClasses($this->fillCacheClasses);
+          $this->fillCacheClasses = [];
+      }
       $file = $this->classes[$class];
       if (!$file)
       {

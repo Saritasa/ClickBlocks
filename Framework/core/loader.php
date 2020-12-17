@@ -69,10 +69,10 @@ class Loader
     * @access protected
     */
    protected $classes = null;
-    
+
     /**
      * Temporary storage for fill cache function.
-     * 
+     *
      * @var array
      */
     protected $fillCacheClasses = [];
@@ -96,7 +96,7 @@ class Loader
     * @access protected
     */
    protected $includedFiles = array();
-   
+
    public static $excludedDirectories = array();
 
    /**
@@ -128,7 +128,7 @@ class Loader
     * @access public
     */
    public $phpFileName = '/^.*\.php$/i';
-   
+
    public $onPreload = null;
 
    /**
@@ -224,13 +224,13 @@ class Loader
     * @param string $paths
     * @param bool $isRoot Is first call of recursive scan directories.
     * @param bool $skipSetClasses Skip to save found classes to cache.
-    * 
+    *
     * @access public
     */
    public function fillCache($paths = null, bool $isRoot = true, bool $skipSetClasses = false)
    {
       $includePaths = array_filter(preg_split('#,\s*#', $paths));
-      if ($isRoot) 
+      if ($isRoot)
       {
          $this->fillCacheClasses = [];
          sleep(10);
@@ -284,7 +284,7 @@ class Loader
    {
       return $this->autoLoadClass($class, $path, false);
    }
-   
+
    /**
     * Checks whether a class exists.
     *
@@ -369,6 +369,10 @@ class Loader
     */
    protected function autoLoadClass($class, $path = null, $isAuto = true)
    {
+      if($this->checkClassInExcludedAutoLoad($class)) {
+         return false;
+      }
+
       if ($isAuto && $this->onPreload != '')
       {
         $this->loadClass('\ClickBlocks\Core\Delegate');
@@ -450,4 +454,18 @@ class Loader
       while ($token[0] != T_STRING);
       return $token[1];
    }
+
+    /**
+     * Checks if the class needs to be added to the autoloader.
+     *
+     * @param $class
+     * @return bool
+     */
+    private function checkClassInExcludedAutoLoad($class) {
+        $excluded = false;
+        if( in_array(strtolower(explode('\\', $class)[0]), explode(',', strtolower($this->reg->config->autoloading['excludeAutoloadClasses'])))) {
+            $excluded = true;
+        }
+        return $excluded;
+    }
 }

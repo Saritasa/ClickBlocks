@@ -27,7 +27,7 @@ use ClickBlocks\Core,
 
 /**
  * General class of the framework.
- * With this class you can log error messages, profile your code, catch any errors, load classes, configure your application and store any global objects. 
+ * With this class you can log error messages, profile your code, catch any errors, load classes, configure your application and store any global objects.
  *
  * @version 1.0.0
  * @package cb.core
@@ -40,7 +40,7 @@ final class CB implements \ArrayAccess
    */
   const TEMPLATE_DEBUG = '<!doctype html><html><head><meta content="text/html; charset=UTF-8" http-equiv="Content-Type" /><title>Bug Report</title><body bgcolor="gold">The following error <pre>$message</pre> has been catched in file <b>$file</b> on line $line<br /><br /><b style="font-size: 14px;">Stack Trace:</b><pre>$traceAsString</pre><b>Execution Time:</b><pre>$executionTime sec</pre><b>Memory Usage:</b><pre>$memoryUsage Mb</pre></pre></body></html>';
   const TEMPLATE_BUG = 'Sorry, server is not available at the moment. Please wait. This site will be working very soon!';
-  
+
   /**
    * Error message templates throwing by ClickBlocks class.
    */
@@ -59,7 +59,7 @@ final class CB implements \ArrayAccess
    * @static
    */
   private static $instance = null;
-  
+
   /**
    * Unique ID of the application (site).
    *
@@ -68,7 +68,7 @@ final class CB implements \ArrayAccess
    * @static
    */
   private static $siteUniqueID = null;
-  
+
   /**
    * Path to site root directory.
    *
@@ -77,7 +77,7 @@ final class CB implements \ArrayAccess
    * @static
    */
   private static $root = null;
-  
+
   /**
    * Array of timestamps.
    *
@@ -86,7 +86,7 @@ final class CB implements \ArrayAccess
    * @static
    */
   private static $time = [];
-  
+
   /**
    * Response body.
    *
@@ -95,7 +95,7 @@ final class CB implements \ArrayAccess
    * @static
    */
   private static $output = null;
-  
+
   /**
    * Array with information about some code that was executed by the operator eval.
    *
@@ -104,7 +104,7 @@ final class CB implements \ArrayAccess
    * @static
    */
   private static $eval = [];
-  
+
   /**
    * Array of different global objects.
    *
@@ -113,7 +113,7 @@ final class CB implements \ArrayAccess
    * @static
    */
   private static $registry = [];
-  
+
   /**
    * Marker of the error handling mode.
    *
@@ -122,7 +122,7 @@ final class CB implements \ArrayAccess
    * @static
    */
   private static $errHandling = false;
-  
+
   /**
    * Instance of the class ClickBlocks\Cache\Cache (or its child).
    *
@@ -130,15 +130,15 @@ final class CB implements \ArrayAccess
    * @access private
    */
   private $cache = null;
-  
+
   /**
    * Instance of the class ClickBlocks\Net\Router.
-   * 
+   *
    * @var ClickBlocks\Net\Router $router
    * @access private
    */
   private $router = null;
-  
+
   /**
    * Array of paths to all classes of the applcation and framework.
    *
@@ -146,7 +146,7 @@ final class CB implements \ArrayAccess
    * @access private
    */
   private $classes = null;
-  
+
   /**
    * Path to the class map file.
    *
@@ -154,15 +154,15 @@ final class CB implements \ArrayAccess
    * @access private
    */
   private $classmap = null;
-  
+
   /**
    * Array of configuration variables.
    *
    * @var array $config
-   * @access private  
+   * @access private
    */
   private $config = [];
-  
+
   /**
    * Returns an instance of this class.
    *
@@ -174,8 +174,8 @@ final class CB implements \ArrayAccess
   {
     return self::$instance;
   }
-  
-  /** 
+
+  /**
    * Returns array of all previously stored global objects.
    *
    * @return array
@@ -185,7 +185,7 @@ final class CB implements \ArrayAccess
   {
     return self::$registry;
   }
-  
+
   /**
    * Returns a global object by its key.
    *
@@ -198,7 +198,7 @@ final class CB implements \ArrayAccess
   {
     return isset(self::$registry[$key]) ? self::$registry[$key] : null;
   }
-  
+
   /**
    * Stores a global object.
    *
@@ -210,7 +210,7 @@ final class CB implements \ArrayAccess
   {
     self::$registry[$key] = $value;
   }
-  
+
   /**
    * Checks whether an global object exist or not.
    *
@@ -220,7 +220,7 @@ final class CB implements \ArrayAccess
   {
     return array_key_exists($key, self::$registry);
   }
-  
+
   /**
    * Removes a global object from the storage.
    *
@@ -232,7 +232,7 @@ final class CB implements \ArrayAccess
   {
     unset(self::$registry[$key]);
   }
-  
+
   /**
    * Sets value of the response body.
    *
@@ -244,7 +244,7 @@ final class CB implements \ArrayAccess
   {
     self::$output = $output;
   }
-  
+
   /**
    * Returns value of the response body.
    *
@@ -256,7 +256,7 @@ final class CB implements \ArrayAccess
   {
     return self::$output;
   }
-  
+
   /**
    * Returns site root directory.
    *
@@ -268,7 +268,7 @@ final class CB implements \ArrayAccess
   {
     return self::$root;
   }
-  
+
   /**
    * Sets start time point for some code part.
    *
@@ -280,7 +280,7 @@ final class CB implements \ArrayAccess
   {
     self::$time[$key] = microtime(true);
   }
-  
+
   /**
    * Returns execution time of some code part by its time mark.
    * If a such time mark doesn't exit then the method return false.
@@ -306,7 +306,7 @@ final class CB implements \ArrayAccess
   {
     return memory_get_usage(true);
   }
-  
+
   /**
    * Returns the peak of memory, in bytes, that's been allocated to your PHP script.
    *
@@ -318,9 +318,9 @@ final class CB implements \ArrayAccess
   {
     return memory_get_peak_usage(true);
   }
-  
+
   /**
-   * Returns the execution time (in seconds) of your PHP script. 
+   * Returns the execution time (in seconds) of your PHP script.
    *
    * @return float
    * @access public
@@ -330,9 +330,9 @@ final class CB implements \ArrayAccess
   {
     return self::pStop('script_execution_time');
   }
-  
+
   /**
-   * Returns the request time (in seconds) of your PHP script. 
+   * Returns the request time (in seconds) of your PHP script.
    *
    * @return float
    * @access public
@@ -342,7 +342,7 @@ final class CB implements \ArrayAccess
   {
     return number_format(microtime(true) - $_SERVER['REQUEST_TIME'], 6);
   }
-  
+
   /**
    * Returns the unique ID of your application (site).
    *
@@ -354,7 +354,7 @@ final class CB implements \ArrayAccess
   {
     return self::$siteUniqueID;
   }
-  
+
   /**
    * Creates and executes a delegate.
    *
@@ -369,7 +369,7 @@ final class CB implements \ArrayAccess
     $params = func_get_args();
     return (new Core\Delegate(array_shift($params)))->call($params);
   }
-  
+
   /**
    * Returns an error message by its token.
    *
@@ -402,12 +402,12 @@ final class CB implements \ArrayAccess
       $token = $class . '::' . $token;
     }
     foreach ($params as $value)
-    { 
+    {
       $err = preg_replace('/\[{var}\]/', $value, $err, 1);
     }
     return $class ? $err . ' (Token: ' . $token . ')' : $err;
   }
-  
+
   /**
    * Checks whether the error handling is turned on.
    *
@@ -419,7 +419,7 @@ final class CB implements \ArrayAccess
   {
     return self::$errHandling;
   }
-  
+
   /**
    * Enables and disables the error handling mode.
    * It returns the previous error reporting level.
@@ -449,7 +449,7 @@ final class CB implements \ArrayAccess
     }
     return $level;
   }
-  
+
   /**
    * Used to detect fatal errors or parsing errors.
    * The method is called automatically when the script is over.
@@ -459,12 +459,12 @@ final class CB implements \ArrayAccess
    */
   public static function fatal()
   {
-    if (self::isErrorHandlingEnabled() && preg_match('/(Fatal|Parse) error:(.*) in (.*) on line (\d+)/', ob_get_contents(), $res)) 
+    if (self::isErrorHandlingEnabled() && preg_match('/(Fatal|Parse) error:(.*) in (.*) on line (\d+)/', ob_get_contents(), $res))
     {
       self::exception(new \ErrorException($res[2], 999, 1, $res[3], $res[4]));
     }
   }
-  
+
   /**
    * Set the debug output for an exception.
    *
@@ -531,7 +531,7 @@ final class CB implements \ArrayAccess
       $render = function($tpl, $info)
       {
         ${'(_._)'} = $tpl; unset($tpl);
-        if (is_file(${'(_._)'})) 
+        if (is_file(${'(_._)'}))
         {
           extract($info);
           return require(${'(_._)'});
@@ -551,7 +551,7 @@ final class CB implements \ArrayAccess
         $url .= ((strpos($url, '?') !== false) ? '&' : '?') . '__DEBUG_INFORMATION__=' . $hash;
         self::go($url, true, false);
       }
-      else 
+      else
       {
         self::$output = $templateDebug;
       }
@@ -562,14 +562,14 @@ final class CB implements \ArrayAccess
     }
     exit;
   }
-  
+
   /**
    * Analyzes an exception.
    *
    * @param \Exception $e
    * @return array - exception information.
    * @access public
-   * @static  
+   * @static
    */
   public static function analyzeException($e)
   {
@@ -582,17 +582,17 @@ final class CB implements \ArrayAccess
       if (is_array($obj))
       {
         if (count($obj) == 0) return '[]';
-        $tmp = []; 
-        foreach ($obj as $k => $v) 
+        $tmp = [];
+        foreach ($obj as $k => $v)
         {
           $k = (string)$k;
           if ($k == '__DEBUG_INFORMATION__') continue;
           if ($k == 'GLOBALS') $tmp[] = 'GLOBALS => *RECURSION*';
-          else $tmp[] = $k . ' => ' . $reduceObject($v);        
+          else $tmp[] = $k . ' => ' . $reduceObject($v);
         }
         return '[ ' . implode(', ', $tmp) . ' ]';
       }
-      if (is_string($obj)) 
+      if (is_string($obj))
       {
         if (strlen($obj) > 1024) $obj = substr($obj, 0, 512) . ' ... [fragment missing] ... ' . substr($obj, -512);
         return '"' . addcslashes($obj, '"') . '"';
@@ -608,9 +608,9 @@ final class CB implements \ArrayAccess
     {
       if (function_exists('apache_request_headers')) return apache_request_headers();
       $headers = [];
-      foreach ($_SERVER as $key => $value) 
+      foreach ($_SERVER as $key => $value)
       {
-        if (strpos($key, 'HTTP_') === 0) 
+        if (strpos($key, 'HTTP_') === 0)
         {
           $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($key, 5)))))] = $value;
         }
@@ -621,7 +621,7 @@ final class CB implements \ArrayAccess
     {
       if (function_exists('apache_response_headers')) return apache_response_headers();
       $headers = [];
-      foreach (headers_list() as $header) 
+      foreach (headers_list() as $header)
       {
         $header = explode(':', $header);
         $headers[array_shift($header)] = trim(implode(':', $header));
@@ -636,7 +636,7 @@ final class CB implements \ArrayAccess
       {
         $min = max(0, $line - $half);
         $max = $count;
-      } 
+      }
       else
       {
         $min = max(0, $line - $half);
@@ -657,7 +657,7 @@ final class CB implements \ArrayAccess
         $row = $row[$line];
         $tokens = token_get_all('<?php ' . $row . '?>');
         $k = 0; $n = count($tokens);
-        while ($k < $n) 
+        while ($k < $n)
         {
           $token = $tokens[$k++];
           if (is_array($token) && $token[0] == T_STRING && $token[1] == $func) return $part;
@@ -728,7 +728,7 @@ final class CB implements \ArrayAccess
       else
       {
         $index = 0; $item['code'] = '';
-        if ($file != 'eval()\'s code') 
+        if ($file != 'eval()\'s code')
         {
           if (is_file($file)) $item['code'] = $fragment($file, $line, $index);
         }
@@ -764,9 +764,9 @@ final class CB implements \ArrayAccess
     unset($info['SESSION']['__DEBUG_INFORMATION__']);
     return $info;
   }
-  
+
   /**
-   * Collects and stores information about some eval's code. 
+   * Collects and stores information about some eval's code.
    *
    * @param string $code - the code that will be executed by eval operator.
    * @return string
@@ -778,7 +778,7 @@ final class CB implements \ArrayAccess
     self::$eval[md5($code)] = $code;
     return $code;
   }
-  
+
   /**
    * Executes PHP code that inserted into HTML.
    *
@@ -795,15 +795,15 @@ final class CB implements \ArrayAccess
     ob_start();
     eval(self::ecode(${'(_._)'}));
     $res = ob_get_clean();
-    if (strpos($res, 'eval()\'d') !== false) exit($res);  
+    if (strpos($res, 'eval()\'d') !== false) exit($res);
     return $res;
   }
-  
+
   /**
-   * Returns the canonicalized absolute pathname of a directory specified by its alias. 
+   * Returns the canonicalized absolute pathname of a directory specified by its alias.
    * The resulting path will have no symbolic link, '/./' or '/../' components and extra '/' characters.
    * The method returns FALSE on failure, e.g. if the file or directory does not exist.
-   * 
+   *
    * @param string $dir - directory alias.
    * @return string | boolean
    * @access public
@@ -833,7 +833,7 @@ final class CB implements \ArrayAccess
     if (file_exists($dir) && linkinfo($dir) > 0) $dir = readlink($dir);
     return !$unipath ? '/'. $dir : $dir;
   }
-  
+
   /**
    * Returns a directory url relative to the site root.
    *
@@ -846,7 +846,7 @@ final class CB implements \ArrayAccess
     $url = str_replace('public/', '', $url);
     return '/' . str_replace('\\', '/', ltrim($url, '\\/'));
   }
-  
+
   /**
    * Logs some data into log files.
    *
@@ -867,7 +867,7 @@ final class CB implements \ArrayAccess
     }
 
   }
-  
+
   /**
    * Performs redirect to given URL.
    *
@@ -891,7 +891,7 @@ final class CB implements \ArrayAccess
     }
     if ($immediately) exit;
   }
-  
+
   /**
    * Performs the page reloading.
    *
@@ -905,7 +905,7 @@ final class CB implements \ArrayAccess
     {
       self::$output = 'window.location.reload();';
     }
-    else 
+    else
     {
       self::$output = '<script type="text/javascript">window.location.reload();</script>';
     }
@@ -951,18 +951,11 @@ final class CB implements \ArrayAccess
         self::$output = $_SESSION['__DEBUG_INFORMATION__'][$_GET['__DEBUG_INFORMATION__']];
         exit;
       }
-      if (get_magic_quotes_gpc()) 
-      {
-        $func = function ($value) use (&$func) {return is_array($value) ? array_map($func, $value) : stripslashes($value);};
-        $_GET = array_map($func, $_GET);
-        $_POST = array_map($func, $_POST);
-        $_COOKIE = array_map($func, $_COOKIE);
-      }
       set_time_limit(0);
     }
     return self::$instance = new self();
   }
-  
+
   /**
    * Constructor.
    *
@@ -972,7 +965,7 @@ final class CB implements \ArrayAccess
   {
     if (!self::$instance) spl_autoload_register([$this, 'al']);
   }
-  
+
   /**
    * Private __clone() method prevents this object cloning.
    *
@@ -1016,7 +1009,7 @@ final class CB implements \ArrayAccess
       throw new \Exception(self::error($this, 'ERR_GENERAL_1', $class));
     }
   }
-  
+
   /**
    * Finds a class or interface to include into your PHP script.
    *
@@ -1028,7 +1021,7 @@ final class CB implements \ArrayAccess
    */
   private function find($class = null, array $options = null)
   {
-    if ($options) 
+    if ($options)
     {
       $paths = [$options['path'] => true];
       $exclusions = $options['exclusions'];
@@ -1054,7 +1047,7 @@ final class CB implements \ArrayAccess
         file_put_contents($classmapFile, '<?php return [];');
         return false;
       }
-      else 
+      else
       {
         file_put_contents($classmapFile, '<?php return false;');
       }
@@ -1082,7 +1075,7 @@ final class CB implements \ArrayAccess
           {
             $token = $tokens[$i];
             if (is_string($token)) continue;
-            switch ($token[0])            
+            switch ($token[0])
             {
               case T_NAMESPACE:
                 $namespace = '';
@@ -1101,7 +1094,7 @@ final class CB implements \ArrayAccess
                 $t = $tokens[$i];
                 if ($t[0] != T_STRING) break;
                 $cs = strtolower(ltrim($namespace . $t[1], '\\'));
-                if (!empty($this->config['autoload']['unique']) && isset($this->classes[$cs])) 
+                if (!empty($this->config['autoload']['unique']) && isset($this->classes[$cs]))
                 {
                   $normalize = function($dir)
                   {
@@ -1134,7 +1127,7 @@ final class CB implements \ArrayAccess
       return count($this->classes);
     }
   }
-  
+
   /**
    * Returns the configuration data or their particular part.
    *
@@ -1146,7 +1139,7 @@ final class CB implements \ArrayAccess
   {
     return $section === null ? $this->config : (empty($this->config[$section]) ? null : $this->config[$section]);
   }
-  
+
   /**
    * Loads the configuration data.
    *
@@ -1180,7 +1173,7 @@ final class CB implements \ArrayAccess
         $ini = true;
       }
     }
-    if ($section !== null) 
+    if ($section !== null)
     {
       if (empty($this->config[$section])) $this->config[$section] = [];
       $config = &$this->config[$section];
@@ -1199,19 +1192,19 @@ final class CB implements \ArrayAccess
     };
     foreach ($data as $sect => $properties)
     {
-      if (is_array($properties)) 
+      if (is_array($properties))
       {
         if (empty($config[$sect]) || !is_array($config[$sect])) $config[$sect] = [];
         foreach ($properties as $k => $v) $config[$sect][$k] = $convert($v);
       }
-      else 
+      else
       {
         $config[$sect] = $convert($properties);
       }
     }
     return $this->config;
   }
-  
+
   /**
    * Returns the default cache object.
    *
@@ -1223,7 +1216,7 @@ final class CB implements \ArrayAccess
     if ($this->cache === null) $this->cache = Cache\Cache::getInstance();
     return $this->cache;
   }
-  
+
   /**
    * Sets the default cache object.
    *
@@ -1234,7 +1227,7 @@ final class CB implements \ArrayAccess
   {
     $this->cache = $cache;
   }
-  
+
   /**
    * Returns the instance of an ClickBlocks\Net\Request object.
    *
@@ -1245,7 +1238,7 @@ final class CB implements \ArrayAccess
   {
     return Net\Request::getInstance();
   }
-  
+
   /**
    * Returns the instance of an ClickBlocks\Net\Response object.
    *
@@ -1256,7 +1249,7 @@ final class CB implements \ArrayAccess
   {
     return Net\Response::getInstance();
   }
-  
+
   /**
    * Returns the instance of an ClickBlocks\Net\Router object.
    *
@@ -1268,7 +1261,7 @@ final class CB implements \ArrayAccess
     if ($this->router === null) $this->router = new Net\Router();
     return $this->router;
   }
-  
+
   /**
    * Creates the class map.
    *
@@ -1280,7 +1273,7 @@ final class CB implements \ArrayAccess
   {
     return $this->find();
   }
-  
+
   /**
    * Returns array of class paths.
    *
@@ -1297,7 +1290,7 @@ final class CB implements \ArrayAccess
     }
     return $this->classes;
   }
-  
+
   /**
    * Sets array of class paths.
    *
@@ -1311,7 +1304,7 @@ final class CB implements \ArrayAccess
     $classmap = $classmap ?: (empty($this->config['autoload']['classmap']) ? null : self::dir($this->config['autoload']['classmap']));
     if (!$classmap) throw new Core\Exception($this, 'ERR_GENERAL_5');
     $code = [];
-    foreach ($classes as $class => $path) 
+    foreach ($classes as $class => $path)
     {
       if (strlen($class) == 0 || !file_exists($path)) continue;
       $code[] = "'" . strtolower($class) . "' => '" . str_replace("'", "\'", $path) . "'";
@@ -1320,7 +1313,7 @@ final class CB implements \ArrayAccess
     $this->classmap = $this->config['autoload']['classmap'] = $classmap;
     $this->classes = $classes;
   }
-  
+
   /**
    * Searches a single class and includes it to the script.
    * Returns FALSE if the given class does not exist and TRUE otherwise.
@@ -1334,7 +1327,7 @@ final class CB implements \ArrayAccess
   {
     return $this->al($class, false);
   }
-  
+
   /**
    * Sets new value of the configuration variable.
    *
@@ -1352,7 +1345,7 @@ final class CB implements \ArrayAccess
    *
    * @param mixed $var - name of the configuration variable.
    * @return boolean
-   * @access public   
+   * @access public
    */
   public function offsetExists($var)
   {

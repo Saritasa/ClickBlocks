@@ -951,13 +951,7 @@ final class CB implements \ArrayAccess
         self::$output = $_SESSION['__DEBUG_INFORMATION__'][$_GET['__DEBUG_INFORMATION__']];
         exit;
       }
-      if (get_magic_quotes_gpc()) 
-      {
-        $func = function ($value) use (&$func) {return is_array($value) ? array_map($func, $value) : stripslashes($value);};
-        $_GET = array_map($func, $_GET);
-        $_POST = array_map($func, $_POST);
-        $_COOKIE = array_map($func, $_COOKIE);
-      }
+
       set_time_limit(0);
     }
     return self::$instance = new self();

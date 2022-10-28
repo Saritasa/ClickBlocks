@@ -48,7 +48,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
   protected $logicFields = array();
   protected $rawOutput = false;
   protected $emptyObjects = false;
-  
+
   const ERR_1 = 'Class name required.';
   const ERR_2 = 'Invalid field in WHERE: "[{var}]".';
   const ERR_3 = 'Invalid field in ORDER: "[{var}]".';
@@ -73,12 +73,12 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     if ($order) $this->order($order);
     if ($limit) $this->limit($limit);
   }
-  
+
   public static function select($bllClassName = null)
   {
-    if ($bllClassName) 
+    if ($bllClassName)
         return new static($bllClassName);
-    else 
+    else
         return new static();
   }
 
@@ -90,7 +90,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     $this->lastPosition = 0;
     $this->lastObject = null;
   }
-  
+
   protected function getTableInfo($dbAlias, $tableAlias)
   {
      return array(
@@ -104,7 +104,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     $this->execute();
     return $this->rows;
   }
-  
+
   /*public function hasChanged()
   {
     return $this->hasChanged;
@@ -123,7 +123,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
       foreach ($where as $k=>$v) {
         if (!isset($this->logicFields[$k])) throw new Core\Exception($this, 'ERR_2', $k);
       }
-    if ($setPrecondition) 
+    if ($setPrecondition)
     {
       if ($where !== $this->precondition) $this->initialize();
       $this->precondition = $where;
@@ -135,7 +135,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     }
     return $this;
   }
-  
+
   /**
    * Set Ordering of result set. This will overwrite all ordering previously set by order().
    * @param string|array $field Field alias to order by or array in form [field=>ascending]
@@ -146,7 +146,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
   public function order($field, $ascending = true)
   {
     if (!is_array($field)) $field = array($field=>$ascending);
-    foreach ($field as $k=>$v) 
+    foreach ($field as $k=>$v)
     {
       if (!isset($this->logicFields[$k])) throw new Core\Exception($this, 'ERR_3', $k);
     }
@@ -154,7 +154,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     $this->initialize();
     return $this;
   }
-  
+
   /**
    * Set Limit for result set. This will overwrite limit previously set by limit().<br/>
    * if $offset and $count are numbers and set - they will be used according to name <br/>
@@ -167,7 +167,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
   public function limit($offset, $count = null)
   {
     if (!$offset && !$count) return $this;
-    if (is_array($offset)) 
+    if (is_array($offset))
     {
       $count = $offset[1];
       $offset = $offset[0];
@@ -177,7 +177,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     $this->limit = array((int)$offset);
     if ($count !== NULL) $this->limit[] = (int)$count;
     $new = $normalize($this->limit);
-    if ($this->rows !== NULL && $old && $new[0]>=$old[0] && ($new[0]+$new[1])<=($old[0]+$old[1])) 
+    if ($this->rows !== NULL && $old && $new[0]>=$old[0] && ($new[0]+$new[1])<=($old[0]+$old[1]))
     {
       $this->rows = array_slice($this->rows, $new[0]-$old[0], $old[0]+$old[1]-$new[0]-$new[1]);
       $this->count = count($this->rows);
@@ -187,7 +187,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     else $this->initialize();
     return $this;
   }
-  
+
   /**
    * @param bool $mode if true - value arrays will be returned instead of BLL objects, false - default mode
    * @return \ClickBlocks\DB\ROWCollection
@@ -197,7 +197,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     $this->rawOutput = (bool)$mode;
     return $this;
   }
-  
+
   /**
    * Defines what to return when using offsetGet on non-existing offset (this has no affect if RawOutput is enabled)
    * @param bool $mode if true - return empty BLL, false - return null (default)
@@ -289,7 +289,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     unset($this->rows[$offset]);
     $this->count = count($this->rows);
   }
-  
+
   /**
    * returns new BLL object; cloning is used to speed up object instantiation
    * @return \ClickBlocks\DB\className
@@ -362,7 +362,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
 
   public function delete($ignoreBusinessLogic = false)
   {
-    if ($ignoreBusinessLogic && $this->rows === NULL && $this->limit === NULL) 
+    if ($ignoreBusinessLogic && $this->rows === NULL && $this->limit === NULL)
     {
       $sqlp = $this->getSQL();
       $db = ORM::getInstance()->getDB($this->alias[0]);
@@ -372,34 +372,34 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
       //print_r($sql);
       $db->execute($sql, $sqlp['PARAMS']);
       /*$fields = $sqlp['FIELDS'];
-      if ($this->rows !== NULL || $this->limit !== NULL) 
+      if ($this->rows !== NULL || $this->limit !== NULL)
       {
         $this->execute();
         $IDs = array();
         //$where = array();
         foreach ($this->rows as $row) {
-          
+
         }
       }*/
-    } 
-    else 
+    }
+    else
     {
       $this->massAction('delete');
     }
     $this->initialize();
   }
-  
+
   /*public function save()
   {
     $this->massAction('save');
     $this->initialize();
   }*/
-  
+
   /*public function update()
   {
     $this->massAction('update');
   }*/
-  
+
   public function insert()
   {
     foreach ($this->objects as $bll) $bll->insert();
@@ -418,12 +418,12 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     }
     $this->setRawOutput($rawMode);
   }
-  
+
   public function loadData()
   {
     $this->execute();
   }
-  
+
   protected function getSQL()
   {
     $db = ORM::getInstance()->getDB($this->alias[0]);
@@ -437,7 +437,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
           'fields'=>array('t'.$i.'.*'),
           'alias'=>'t'.$i,
           'pk'=>$this->info->getKeyInfoByTableAlias($alias[0],$alias[1]),
-          ); 
+          );
       $_fields = $this->info->getFieldNamesByTableAlias($alias[0], $alias[1]);
       foreach ($_fields as $alias=>$name) {
         $fields[$alias] = $tables[$i]['alias'].'.'.$db->wrap($name);
@@ -454,7 +454,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
       {
         foreach ($this->{$type} as $fieldAlias => $value)
         {
-          if ($value instanceof SQLExpression) 
+          if ($value instanceof SQLExpression)
           {
             $w[] = $fields[$fieldAlias] . ' = '.$value;
           }
@@ -477,7 +477,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
       $selectTables[] = implode(',', $table['fields']);
       if ($table == $mainTable) {
         $fromTables[] = "{$table['db']}.{$table['table']} {$table['alias']}";
-      } 
+      }
       else
       {
         $on = array();
@@ -512,15 +512,15 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     if ($this->rows !== NULL) return;
     if ($count && $this->count !== NULL) return;
     $db = ORM::getInstance()->getDB($this->alias[0]);
-    
+
     $sqlp = $this->getSQL();
-    
-    $sql = 'SELECT '.($count ? 'COUNT(*)' : $sqlp['SELECT']).' FROM '.$sqlp['FROM'].' '.$sqlp['JOIN'].' '.($sqlp['WHERE'] ? 'WHERE '.$sqlp['WHERE'] : '').' '.($count ? '' : isset($sqlp['ORDER']) ? $sqlp['ORDER'] : '').' '.(isset($sqlp['LIMIT']) ? $sqlp['LIMIT'] : '');
-    
+
+    $sql = 'SELECT '.($count ? 'COUNT(*)' : $sqlp['SELECT']).' FROM '.$sqlp['FROM'].' '.$sqlp['JOIN'].' '.($sqlp['WHERE'] ? 'WHERE '.$sqlp['WHERE'] : '').' '.($count ? '' : (isset($sqlp['ORDER']) ? $sqlp['ORDER'] : '')).' '.(isset($sqlp['LIMIT']) ? $sqlp['LIMIT'] : '');
+
     //echo $sql.PHP_EOL;
     //print_r($params);
-    
-    if ($count) 
+
+    if ($count)
     {
       $this->count = $db->cell($sql, $sqlp['PARAMS']);
     }
@@ -531,7 +531,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     }
   }
 
-  
+
 }
 
 ?>

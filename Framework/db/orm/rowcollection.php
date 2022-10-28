@@ -515,7 +515,7 @@ class ROWCollection implements \Iterator, \ArrayAccess, \SeekableIterator, \Coun
     
     $sqlp = $this->getSQL();
     
-    $sql = 'SELECT '.($count ? 'COUNT(*)' : $sqlp['SELECT']).' FROM '.$sqlp['FROM'].' '.$sqlp['JOIN'].' '.($sqlp['WHERE'] ? 'WHERE '.$sqlp['WHERE'] : '').' '.($count ? '' : isset($sqlp['ORDER']) ? $sqlp['ORDER'] : '').' '.(isset($sqlp['LIMIT']) ? $sqlp['LIMIT'] : '');
+    $sql = 'SELECT '.($count ? 'COUNT(*)' : $sqlp['SELECT']).' FROM '.$sqlp['FROM'].' '.$sqlp['JOIN'].' '.($sqlp['WHERE'] ? 'WHERE '.$sqlp['WHERE'] : '').' '.($count ? '' : (isset($sqlp['ORDER']) ? $sqlp['ORDER'] : '')).' '.(isset($sqlp['LIMIT']) ? $sqlp['LIMIT'] : '');
     
     //echo $sql.PHP_EOL;
     //print_r($params);

@@ -62,53 +62,51 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
       return $this->info['deleteable'];
    }
 
-   public function count()
+   public function count(): int
    {
       if ($this->config['orm']['lazyLoading']) $this->execute();
       return count($this->rows);
    }
 
-   public function seek($position)
+   public function seek($position): void
    {
       if ($this->config['orm']['lazyLoading']) $this->execute();
       $this->position = $position;
       if (!$this->valid()) throw new \Exception(err_msg('ERR_GENERAL_2', array($this->position)));
    }
 
-   public function rewind()
+   public function rewind(): void
    {
       if ($this->config['orm']['lazyLoading']) $this->execute();
       $this->position = 0;
-      return true;
    }
 
-   public function current()
+   public function current(): mixed
    {
       if ($this->config['orm']['lazyLoading']) $this->execute();
       return $this->offsetGet($this->key(), true);
    }
 
-   public function key()
+   public function key(): mixed
    {
       if ($this->config['orm']['lazyLoading']) $this->execute();
       $tmp = array_keys($this->rows);
       return $tmp[$this->position];
    }
 
-   public function next()
+   public function next(): void
    {
       if ($this->config['orm']['lazyLoading']) $this->execute();
       $this->position++;
-      return true;
    }
 
-   public function valid()
+   public function valid(): bool
    {
       if ($this->config['orm']['lazyLoading']) $this->execute();
       return isset($this->rows[$this->key()]);
    }
 
-   public function offsetSet($offset, $value, $alwaysRead = false)
+   public function offsetSet($offset, $value, $alwaysRead = false): void
    {
       if (!$this->info['insertable'] && !$alwaysRead) throw new \Exception(err_msg('ERR_NAV_2', array($this->field)));
       if ($this->config['orm']['lazyLoading']) $this->execute();
@@ -132,13 +130,13 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
       if (isset($this->objects[$offset])) unset($this->objects[$offset]);
    }
 
-   public function offsetExists($offset)
+   public function offsetExists($offset): bool
    {
       if ($this->config['orm']['lazyLoading']) $this->execute();
       return isset($this->rows[$offset]);
    }
 
-   public function offsetUnset($offset)
+   public function offsetUnset($offset): void
    {
       if (!$this->info['deleteable']) throw new \Exception(err_msg('ERR_NAV_3', array($this->field)));
       if ($this->config['orm']['lazyLoading']) $this->execute();
@@ -147,7 +145,7 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
       unset($this->objects[$offset]);
    }
 
-   public function offsetGet($offset, $alwaysRead = false)
+   public function offsetGet($offset, $alwaysRead = false): mixed
    {
       if (!$this->info['readable'] && !$alwaysRead) throw new \Exception(err_msg('ERR_NAV_1', array($this->field)));
       $this->lastPosition = $offset;
@@ -155,7 +153,7 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
       if ($this->info['output'] == 'raw') return $this->rows[$offset];
       if (isset($this->objects[$offset])) return $this->objects[$offset];
       $bll = new $this->info['to']['bll']();
-      $bll->assign((array)$this->rows[$offset]);
+      $bll->assign(array_key_exists($offset, $this->rows) ? (array)$this->rows[$offset] : []);
       $bll->navigator = array('navObject' => $this, 'offset' => $offset);
       $this->objects[$offset] = $bll;
       return $bll;
@@ -203,6 +201,16 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
       foreach ($data as $k => $v) $this->{$k} = $v;
       $this->initialize();
    }
+   
+   public function __serialize()
+   {
+      return $this->serialize();
+   }
+   
+   public function __unserialize($data)
+   {
+      return $this->unserialize($data);
+   }
 
    public function limit($page = 0, $pagesize = 0)
    {
@@ -228,7 +236,7 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
       $info = ORM::getInstance()->getORMInfoObject()->getNavigationFieldInfoForSQL($dal->getDBAlias(), $dal->getTableAlias(), $this->field);
       $fromDBName = $db->wrap($info['from']['db']);
       $toDBName = $db->wrap($info['to']['db']);
-      $toInheritDB = $db->wrap($info['to']['inherit']['db']);
+      $toInheritDB = $db->wrap(array_key_exists('inherit', $info['to']) ? $info['to']['inherit']['db'] : '');
       if ($db->getEngine() == 'mssql')
       {
          $fromDBName .= '.[dbo]';
@@ -272,7 +280,7 @@ class NavigationProperty implements \Iterator, \ArrayAccess, \SeekableIterator, 
             $joins[] = 't2.' . $db->wrap($data['name']) . ' = t1.' . $db->wrap($toField['name']);
             $w[] = 't2.' . $db->wrap($data['name']) . ' = ?';
          }
-         if (!$info['to']['inherit'])
+         if (!array_key_exists('inherit', $info['to']) || !$info['to']['inherit'])
          {
             $sql = 'SELECT t1.* FROM ' . $toDBName . '.' . $db->wrap($info['to']['table']) . ' AS t1
                     INNER JOIN ' . $fromDBName . '.' .  $db->wrap($info['from']['table']) . ' AS t2 ON ' . implode(' AND ', $joins) . '

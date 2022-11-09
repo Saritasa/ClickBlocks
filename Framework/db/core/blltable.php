@@ -122,7 +122,8 @@ class BLLTable implements IBLLTable, \Serializable
       if (isset($this->fields[$field]))
       {
          $dal = $this->dal[$this->fields[$field]];
-         if ($value !== $dal->{$field} && $this->navigator['navObject'] instanceof NavigationProperty)
+         $navObject = $this->navigator['navObject'] ?? null;
+         if ($value !== $dal->{$field} && $navObject instanceof NavigationProperty)
          {
             if (!$this->navigator['navObject']->isUpdateable())
               throw new \Exception(err_msg('ERR_NAV_4', array($this->navigator['navObject']->getField())));
@@ -319,6 +320,15 @@ class BLLTable implements IBLLTable, \Serializable
    public function assignByID($ID)
    {
        return self::getService()->getByID($ID);
+   }
+   
+   public function __serialize()
+   {
+      return $this->serialize();
+   }
+   public function __unserialize($data)
+   {
+      $this->unserialize($data);
    }
 }
 

@@ -356,8 +356,8 @@ class Page implements IPage
    public function __get($param)
    {
       if ($param == 'tpl') return $this->tpl;
-      if ($param == 'head') return $this->xhtml->head;
-      if ($param == 'body') return $this->xhtml->body ?: $this->getByUniqueID($this->uniqueID);
+      if ($param == 'head') return $this->xhtml ? $this->xhtml->head : null;
+      if ($param == 'body') return ($this->xhtml && $this->xhtml->body) ? $this->xhtml->body : $this->getByUniqueID($this->uniqueID);
       throw new \Exception(err_msg('ERR_GENERAL_3', array($param, get_class($this))));
    }
 

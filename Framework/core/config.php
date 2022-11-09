@@ -52,26 +52,26 @@ class Config implements \ArrayAccess
       $this->root = $_SERVER['DOCUMENT_ROOT'];
    }
 
-   public function offsetSet($property, $value)
+   public function offsetSet(mixed $offset, mixed $value): void
    {
-      $this->{$property} = $value;
+      $this->{$offset} = $value;
    }
 
-   public function offsetGet($property)
+   public function offsetGet(mixed $property): mixed
    {
       if (isset($this->{$property})) return $this->{$property};
       if (is_null($property)) throw new \Exception(err_msg('ERR_GENERAL_8', array(get_class($this))));
       throw new \Exception(err_msg('ERR_GENERAL_3', array($property, get_class($this))));
    }
 
-   public function offsetExists($property)
+   public function offsetExists(mixed $property): bool
    {
       return isset($this->{$property});
    }
 
-   public function offsetUnset($property)
+   public function offsetUnset(mixed $offset): void
    {
-      unset($this->{$property});
+      unset($this->{$offset});
    }
 
    /**

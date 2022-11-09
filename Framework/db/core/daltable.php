@@ -224,7 +224,7 @@ class DALTable implements IDALTable, \Serializable
       {
          foreach ($data as $k => $v)
          {
-            $field = $this->info['aliases'][$k];
+            $field = $this->info['aliases'][$k] ?? null;
             if (!$field) continue;
             $fieldinfo = &$this->info['fields'][$field];
             $fieldinfo['value'] = $v;
@@ -361,6 +361,16 @@ class DALTable implements IDALTable, \Serializable
       $this->isInstantiated = false;
       $this->setValues($values, false);
       $this->isInstantiated = $flag;
+   }
+   
+   public function __serialize()
+   {
+      return $this->serialize();
+   }
+   
+   public function __unserialize($data)
+   {
+      return $this->unserialize($data);
    }
 
    protected function getData($isReplace = false)

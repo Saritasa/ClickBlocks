@@ -76,7 +76,6 @@ define('ERR_CTRL_5', 'Web control "[{var}]" with ID = "[{var}]" exists already i
 define('ERR_CTRL_6', 'Web control with ID = "[{var}]" hasn\'t the parent control, because it can not be deleted or replaced');
 define('ERR_CTRL_7', 'Web control with uniqueID = "[{var}]" does not exist');
 define('ERR_CTRL_8', 'Web control should be instance of a CheckBox control');
-define('ERR_CTRL_9', 'Web control should be instance of a RadioButton control');
 define('ERR_CTRL_9', 'Web control should be instance of a RadioButton or CheckBox control');
 define('ERR_CTRL_10', 'Type of the navigator with ID = "[{var}]" is "[{var}]" and it is not implemented yet');
 define('ERR_CTRL_11', 'Web control with ID = "[{var}]" is not instance of ClickBlocks\Web\UI\POM\Panel, because it can not include others controls');

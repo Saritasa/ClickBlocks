@@ -73,7 +73,7 @@ class IO
       $config = Register::getInstance()->config;
       $url = $config->dirs[$folder] ?: $folder;
       if (substr($url, 0, 4) == 'http') return $url;
-      return $config->base . $url;
+      return $config->baseUrl . $url;
    }
 
    /**

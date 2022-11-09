@@ -398,7 +398,7 @@ class Loader
           $this->setClasses($this->fillCacheClasses);
           $this->fillCacheClasses = [];
       }
-      $file = $this->classes[$class];
+      $file = array_key_exists($class, $this->classes) ? $this->classes[$class] : null;
       if (!$file)
       {
          if ($isAuto) Debugger::exceptionHandler(new \Exception(err_msg('ERR_GENERAL_1', array($class))));
@@ -426,7 +426,7 @@ class Loader
          $n++;
          if ($n >= $max) return '\\' . $namespace;
          $token = $tokens[$n];
-         if ($token[0] == T_STRING || $token[0] == T_NS_SEPARATOR) $namespace .= $token[1];
+         if ($token[0] == T_NAME_QUALIFIED) $namespace .= $token[1];
       }
       while (is_array($token));
       return '\\' . $namespace;

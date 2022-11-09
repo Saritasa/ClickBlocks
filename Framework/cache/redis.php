@@ -102,7 +102,7 @@ class CacheRedis implements ICache
    */
   public function delete($key)
   {
-    $this->redis->delete($key);
+    $this->redis->del($key);
   }
 
   /**

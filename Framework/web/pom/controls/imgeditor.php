@@ -26,7 +26,7 @@ class ImgEditor extends Popup
   {
     $this->view->addCSS(['href' => \CB::url('framework') . '/web/js/imgeditor/imgeditor.css']);
     $this->view->addJS(['src' => \CB::url('framework') . '/web/js/imgeditor/raphael-min.js']);
-    $this->tpl->id = $id = $this->attribute['id'];
+    $this->tpl->id = $id = $this->attributes['id'];
     $this->get('rotate')->settings = ['start' => 0, 
                                       'connect' => 'lower', 
                                       'range' => ['min' => -180, 'max' => 180], 
